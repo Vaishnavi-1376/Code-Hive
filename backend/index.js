@@ -6,8 +6,9 @@ const { DBConnection } = require('./database/db');
 const userRoutes = require('./routes/userRoutes');
 const problemRoutes = require('./routes/problemRoutes');
 const { errorHandler } = require('./middleware/errorMiddleware');
-const compilerRoutes = require('./routes/compilerRoutes');
-
+const compilerRoutes = require('./routes/compilerRoutes'); 
+const compilerController = require('./controllers/compilerController'); 
+const { protect } = require('./middleware/authMiddleware'); 
 dotenv.config();
 const app = express();
 
@@ -23,9 +24,11 @@ const PORT = process.env.PORT || 5000;
 
 DBConnection();
 
+// API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/compile', compilerRoutes);
+app.post('/api/submit', protect, compilerController.submitCode); 
 app.use(errorHandler);
 
 app.listen(PORT, () => {

@@ -1,7 +1,7 @@
 const Problem = require('../models/Problem');
 const asyncHandler = require('express-async-handler');
 const createProblem = asyncHandler(async (req, res) => {
-  const { title, description, difficulty, tags, sampleInput, sampleOutput } = req.body;
+const { title, description, difficulty, tags, sampleInput, sampleOutput, testCases } = req.body; 
 
   if (!title || !description || !difficulty) {
     res.status(400);
@@ -21,6 +21,7 @@ const createProblem = asyncHandler(async (req, res) => {
     tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
     sampleInput,
     sampleOutput,
+    testCases: testCases || [], 
     createdBy: req.user._id,
   });
 
@@ -33,6 +34,7 @@ const createProblem = asyncHandler(async (req, res) => {
       tags: problem.tags,
       sampleInput: problem.sampleInput,
       sampleOutput: problem.sampleOutput,
+      testCases: problem.testCases, 
       createdBy: problem.createdBy,
       createdAt: problem.createdAt,
     });
@@ -43,7 +45,7 @@ const createProblem = asyncHandler(async (req, res) => {
 });
 
 const getProblems = asyncHandler(async (req, res) => {
-  const problems = await Problem.find({}).select('-testCases');
+  const problems = await Problem.find({});
   res.status(200).json(problems);
 });
 
@@ -59,7 +61,7 @@ const getProblemById = asyncHandler(async (req, res) => {
 });
 
 const updateProblem = asyncHandler(async (req, res) => {
-  const { title, description, difficulty, tags, sampleInput, sampleOutput } = req.body;
+  const { title, description, difficulty, tags, sampleInput, sampleOutput, testCases } = req.body; 
 
   const problem = await Problem.findById(req.params.id);
 
@@ -68,12 +70,21 @@ const updateProblem = asyncHandler(async (req, res) => {
     throw new Error('Problem not found');
   }
 
+  if (title && title !== problem.title) {
+    const problemExists = await Problem.findOne({ title });
+    if (problemExists && problemExists._id.toString() !== problem._id.toString()) {
+      res.status(400);
+      throw new Error('Another problem with this title already exists.');
+    }
+  }
+
   problem.title = title || problem.title;
   problem.description = description || problem.description;
   problem.difficulty = difficulty || problem.difficulty;
   problem.tags = tags ? tags.split(',').map(tag => tag.trim()) : problem.tags;
   problem.sampleInput = sampleInput || problem.sampleInput;
   problem.sampleOutput = sampleOutput || problem.sampleOutput;
+  problem.testCases = testCases || problem.testCases; 
   problem.updatedAt = Date.now();
 
   const updatedProblem = await problem.save();
@@ -86,6 +97,7 @@ const updateProblem = asyncHandler(async (req, res) => {
     tags: updatedProblem.tags,
     sampleInput: updatedProblem.sampleInput,
     sampleOutput: updatedProblem.sampleOutput,
+    testCases: updatedProblem.testCases,
     createdBy: updatedProblem.createdBy,
     createdAt: updatedProblem.createdAt,
     updatedAt: updatedProblem.updatedAt,

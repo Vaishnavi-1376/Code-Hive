@@ -4,9 +4,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs/components/prism-core';
-import 'prismjs/components/prism-clike';
-import 'prismjs/components/prism-javascript';
 import 'prismjs/themes/prism.css';
+import 'prismjs/components/prism-clike';     
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-java';
+import 'prismjs/components/prism-c';          
+import 'prismjs/components/prism-cpp';        
 
 const ProblemDetailPage = () => {
     const { id } = useParams();
@@ -15,12 +19,43 @@ const ProblemDetailPage = () => {
     const [error, setError] = useState('');
     const [deleteMessage, setDeleteMessage] = useState('');
     const [deleteError, setDeleteError] = useState('');
-    const [code, setCode] = useState('// Write your JavaScript code here\nconsole.log("Hello, World!");');
-    const [output, setOutput] = useState('');
-    const [compiling, setCompiling] = useState(false);
-    const [compilerError, setCompilerError] = useState('');
+    const [code, setCode] = useState(''); 
+    const [output, setOutput] = useState(''); 
+    const [compiling, setCompiling] = useState(false); 
+    const [compilerError, setCompilerError] = useState(''); 
+    const [userInput, setUserInput] = useState(''); 
+    const [language, setLanguage] = useState('javascript'); 
+    const [submissionResults, setSubmissionResults] = useState(null); 
+    const [submitting, setSubmitting] = useState(false); 
+    const [submissionError, setSubmissionError] = useState(''); 
+    const [overallVerdict, setOverallVerdict] = useState(''); 
     const { token, user } = useAuth();
     const navigate = useNavigate();
+
+    const initialCodeSnippets = {
+        javascript: '// Write your JavaScript code here\nconsole.log("Hello, World!");',
+        python: '# Write your Python code here\nprint("Hello, World!")',
+        java: '// Write your Java code here\nimport java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}',
+        cpp: '// Write your C++ code here\n   std::cout << "Hello, World!" << std::endl;\n    return 0;\n}',
+        c: '// Write your C code here\n#include <stdio.h>\n    // printf("Hello, %d!\\n", num);\n    printf("Hello, World!\\n");\n    return 0;\n}',
+    };
+
+    const getPrismLanguage = (lang) => {
+        switch (lang) {
+            case 'javascript':
+                return languages.js;
+            case 'python':
+                return languages.python;
+            case 'java':
+                return languages.java;
+            case 'cpp':
+                return languages.cpp;
+            case 'c':
+                return languages.c;
+            default:
+                return languages.clike; 
+        }
+    };
 
     useEffect(() => {
         const fetchProblem = async () => {
@@ -29,8 +64,10 @@ const ProblemDetailPage = () => {
                 if (token) {
                     config.headers = { Authorization: `Bearer ${token}` };
                 }
+
                 const res = await axios.get(`http://localhost:5000/api/problems/${id}`, config);
                 setProblem(res.data);
+                setCode(initialCodeSnippets[language]);
             } catch (err) {
                 console.error(`Error fetching problem with ID ${id}:`, err.response?.data || err);
                 setError(err.response?.data?.message || 'Failed to fetch problem details.');
@@ -40,7 +77,18 @@ const ProblemDetailPage = () => {
         };
 
         fetchProblem();
-    }, [id, token]);
+    }, [id, token, language]); 
+
+    const handleLanguageChange = (e) => {
+        const selectedLang = e.target.value;
+        setLanguage(selectedLang);
+        setCode(initialCodeSnippets[selectedLang] || '');
+        setOutput('');
+        setCompilerError('');
+        setSubmissionResults(null);
+        setSubmissionError('');
+        setOverallVerdict('');
+    };
 
     const handleDelete = async () => {
         if (window.confirm('Are you sure you want to delete this problem? This action cannot be undone.')) {
@@ -66,8 +114,11 @@ const ProblemDetailPage = () => {
 
     const handleRunCode = async () => {
         setCompiling(true);
-        setOutput('');
-        setCompilerError('');
+        setOutput(''); 
+        setCompilerError(''); 
+        setSubmissionResults(null); 
+        setSubmissionError(''); 
+        setOverallVerdict(''); 
 
         if (!token) {
             setCompilerError('You must be logged in to run code.');
@@ -85,19 +136,64 @@ const ProblemDetailPage = () => {
 
             const res = await axios.post('http://localhost:5000/api/compile', {
                 code,
-                language: 'javascript',
+                language,
+                input: userInput, 
             }, config);
 
             setOutput(res.data.output);
         } catch (err) {
             console.error('Error running code:', err.response?.data || err);
-            setCompilerError(err.response?.data?.error || err.response?.data?.message || 'Failed to run code. Please check your code for syntax errors.');
+            setCompilerError(err.response?.data?.error || err.response?.data?.message || 'Failed to run code. Please check your code for syntax errors or unexpected output.');
         } finally {
             setCompiling(false);
         }
     };
 
-    const canEditOrDelete = user && (user.role === 'admin' || (problem && problem.createdBy === user._id));
+    const handleSubmitCode = async () => {
+        setSubmitting(true);
+        setSubmissionResults(null); 
+        setSubmissionError(''); 
+        setOutput(''); 
+        setCompilerError(''); 
+        setOverallVerdict(''); 
+
+        if (!token) {
+            setSubmissionError('You must be logged in to submit code.');
+            setSubmitting(false);
+            return;
+        }
+        if (!problem || !problem._id) {
+            setSubmissionError('Problem ID not found. Cannot submit code.');
+            setSubmitting(false);
+            return;
+        }
+
+        try {
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            };
+
+            const res = await axios.post('http://localhost:5000/api/submit', {
+                code,
+                language,
+                problemId: problem._id,
+            }, config);
+
+            setSubmissionResults(res.data.testResults);
+            setOverallVerdict(res.data.verdict || ''); 
+        } catch (err) {
+            console.error('Error submitting code:', err.response?.data || err);
+            setSubmissionError(err.response?.data?.error || err.response?.data?.message || 'Failed to submit code. Please check your code or try again.');
+            setOverallVerdict(err.response?.data?.verdict || 'Submission Failed');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const canEditOrDelete = user && (user.userType === 'admin' || (problem && problem.createdBy === user._id));
 
     if (loading) {
         return <div className="text-center mt-20 text-lg text-gray-700">Loading problem details...</div>;
@@ -145,10 +241,11 @@ const ProblemDetailPage = () => {
                 )}
 
                 <div className="flex items-center space-x-4 mb-6">
-                    <span className={`px-4 py-2 rounded-full text-lg font-semibold ${problem.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
-                            problem.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                        }`}>
+                    <span className={`px-4 py-2 rounded-full text-lg font-semibold ${
+                        problem.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
+                        problem.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                    }`}>
                         {problem.difficulty}
                     </span>
                     {displayTags.length > 0 && (
@@ -195,39 +292,124 @@ const ProblemDetailPage = () => {
 
                 <div className="mt-8 pt-6 border-t border-gray-200">
                     <h2 className="text-2xl font-bold text-gray-800 mb-4">Code Editor</h2>
+
+                    <div className="mb-4">
+                        <label htmlFor="language-select" className="block text-gray-700 text-sm font-bold mb-2">
+                            Select Language:
+                        </label>
+                        <select
+                            id="language-select"
+                            className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            value={language}
+                            onChange={handleLanguageChange}
+                        >
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="c">C</option>
+                        </select>
+                    </div>
+
                     <div className="bg-gray-800 rounded-md overflow-hidden font-mono text-sm">
                         <Editor
                             value={code}
                             onValueChange={setCode}
-                            highlight={code => highlight(code, languages.js)}
+                            highlight={code => highlight(code, getPrismLanguage(language), language)}
                             padding={10}
                             style={{
                                 fontFamily: '"Fira code", "Fira Mono", monospace',
                                 fontSize: 14,
-                                backgroundColor: '#2d2d2d',
+                                backgroundColor: '#2d2d2d', 
                                 color: '#f8f8f2',
                                 minHeight: '200px',
                             }}
                         />
                     </div>
-                    <button
-                        onClick={handleRunCode}
-                        disabled={compiling || !token}
-                        className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {compiling ? 'Running Code...' : 'Run Code'}
-                    </button>
+
+                    <h2 className="text-2xl font-bold text-gray-800 mt-6 mb-4">Input for 'Run Code'</h2>
+                    <textarea
+                        className="w-full p-4 bg-gray-900 text-gray-50 font-mono text-sm rounded-md border border-gray-700 focus:ring-blue-500 focus:border-blue-500 min-h-[100px]"
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        placeholder="Enter input for your code here (this input is used only when you click 'Run Code')..."
+                    ></textarea>
+
+                    <div className="flex space-x-4 mt-4">
+                        <button
+                            onClick={handleRunCode}
+                            disabled={compiling || !token}
+                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {compiling ? 'Running Code...' : 'Run Code'}
+                        </button>
+                        <button
+                            onClick={handleSubmitCode}
+                            disabled={submitting || !token}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {submitting ? 'Submitting...' : 'Submit Code'}
+                        </button>
+                    </div>
 
                     {compilerError && (
-                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4">
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4 whitespace-pre-wrap">
                             Error: {compilerError}
                         </div>
                     )}
+                    {submissionError && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4 whitespace-pre-wrap">
+                            Submission Error: {submissionError}
+                        </div>
+                    )}
 
-                    <h2 className="text-2xl font-bold text-gray-800 mt-6 mb-4">Output</h2>
-                    <pre className="bg-gray-100 p-4 rounded-md text-sm font-mono text-gray-800 overflow-auto min-h-[100px]">
-                        {output || 'Your code output will appear here.'}
+                    <h2 className="text-2xl font-bold text-gray-800 mt-6 mb-4">Output (from 'Run Code')</h2>
+                    <pre className="bg-gray-100 p-4 rounded-md text-sm font-mono text-gray-800 overflow-auto min-h-[100px] whitespace-pre-wrap">
+                        {output || 'Your code output will appear here after clicking "Run Code".'}
                     </pre>
+
+                    {submissionResults && (
+                        <div className="mt-6">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                                Submission Results
+                                {overallVerdict && (
+                                    <span className={`ml-4 px-3 py-1 rounded-full text-lg font-semibold ${
+                                        overallVerdict === 'Accepted' ? 'bg-green-200 text-green-900' :
+                                        (overallVerdict === 'Wrong Answer' || overallVerdict === 'Time Limit Exceeded' || overallVerdict === 'Runtime Error' || overallVerdict === 'Compilation Error' || overallVerdict === 'Submission Failed') ? 'bg-red-200 text-red-900' :
+                                        'bg-gray-200 text-gray-900'
+                                    }`}>
+                                        {overallVerdict}
+                                    </span>
+                                )}
+                            </h2>
+                            {submissionResults.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {submissionResults.map((result, index) => (
+                                        <div
+                                            key={index}
+                                            className={`p-4 rounded-md shadow-md ${
+                                                result.passed ? 'bg-green-100 border border-green-400 text-green-800' : 'bg-red-100 border border-red-400 text-red-800'
+                                            }`}
+                                        >
+                                            <h3 className="font-bold text-lg mb-2">Test Case {index + 1}</h3>
+                                            <p>Status: <span className="font-semibold">{result.message.split('\n')[0]}</span></p>
+                                            {!result.passed && (
+                                                <>
+                                                    <p className="text-sm mt-1">Expected: <pre className="inline whitespace-pre-wrap">{result.expectedOutput}</pre></p>
+                                                    <p className="text-sm">Your Output: <pre className="inline whitespace-pre-wrap">{result.userOutput}</pre></p>
+                                                    {result.message.includes('\n') && ( 
+                                                        <p className="text-sm mt-2">Details: <pre className="whitespace-pre-wrap">{result.message}</pre></p>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-gray-600">No test cases found for this problem or an issue occurred during submission setup.</p>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -1,26 +1,20 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext'; 
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, error: authError, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
 
     try {
       await login(email, password);
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
-      console.error('Login error in LoginPage:', err);
-    } finally {
-      setLoading(false);
+      console.error('Login attempt failed in LoginPage (caught from AuthContext):', err);
     }
   };
 
@@ -28,10 +22,9 @@ const LoginPage = () => {
     <div className="flex justify-center items-center min-h-[80vh] bg-gray-50 p-4">
       <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md text-center">
         <h2 className="text-3xl font-bold text-gray-800 mb-6">Login</h2>
-
-        {error && (
+        {authError && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <span className="block sm:inline">{error}</span>
+            <span className="block sm:inline">{authError}</span>
           </div>
         )}
 
@@ -61,9 +54,9 @@ const LoginPage = () => {
           <button
             type="submit"
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300"
-            disabled={loading}
+            disabled={authLoading} 
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {authLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 

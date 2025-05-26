@@ -7,23 +7,46 @@ const AddProblemPage = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [difficulty, setDifficulty] = useState('Easy');
-  const [tags, setTags] = useState(''); 
+  const [tags, setTags] = useState('');
   const [sampleInput, setSampleInput] = useState('');
   const [sampleOutput, setSampleOutput] = useState('');
-  const [message, setMessage] = useState(''); 
-  const [error, setError] = useState('');     
+  const [testCases, setTestCases] = useState([{ input: '', expectedOutput: '' }]); 
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { token, user } = useAuth();
   const navigate = useNavigate();
 
+  const handleAddTestCase = () => {
+    setTestCases([...testCases, { input: '', expectedOutput: '' }]);
+  };
+
+  const handleRemoveTestCase = (index) => {
+    const newTestCases = testCases.filter((_, i) => i !== index);
+    setTestCases(newTestCases);
+  };
+
+  const handleTestCaseChange = (index, field, value) => {
+    const newTestCases = [...testCases];
+    newTestCases[index][field] = value;
+    setTestCases(newTestCases);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage(''); 
-    setError('');   
+    setMessage('');
+    setError('');
     setLoading(true);
 
     if (!token) {
       setError('You must be logged in to add a problem.');
+      setLoading(false);
+      return;
+    }
+
+    const hasEmptyTestCase = testCases.some(tc => !tc.input.trim() || !tc.expectedOutput.trim());
+    if (hasEmptyTestCase) {
+      setError('All test case input and expected output fields must be filled.');
       setLoading(false);
       return;
     }
@@ -40,27 +63,28 @@ const AddProblemPage = () => {
         title,
         description,
         difficulty,
-        tags: tags, 
+        tags: tags,
         sampleInput,
         sampleOutput,
+        testCases, 
       };
 
       const res = await axios.post('http://localhost:5000/api/problems', problemData, config);
 
-      setMessage('Problem added successfully!'); 
+      setMessage('Problem added successfully!');
       setTitle('');
       setDescription('');
       setDifficulty('Easy');
       setTags('');
       setSampleInput('');
       setSampleOutput('');
+      setTestCases([{ input: '', expectedOutput: '' }]); 
       setTimeout(() => {
         navigate('/problems');
-      }, 1500); 
+      }, 1000);
 
     } catch (err) {
       console.error('Error adding problem:', err.response?.data || err);
-
       setError(err.response?.data?.message || err.response?.data?.error || 'Failed to add problem. Please check console for details.');
     } finally {
       setLoading(false);
@@ -154,6 +178,53 @@ const AddProblemPage = () => {
               value={sampleOutput}
               onChange={(e) => setSampleOutput(e.target.value)}
             ></textarea>
+          </div>
+
+          <div className="border border-gray-300 rounded-md p-4 bg-gray-50">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Test Cases</h3>
+            {testCases.map((testCase, index) => (
+              <div key={index} className="flex flex-col space-y-2 mb-4 p-3 border border-gray-200 rounded-md bg-white">
+                <p className="text-sm font-medium text-gray-700">Test Case {index + 1}</p>
+                <div>
+                  <label htmlFor={`input-${index}`} className="block text-sm font-medium text-gray-600">Input</label>
+                  <textarea
+                    id={`input-${index}`}
+                    rows="2"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    value={testCase.input}
+                    onChange={(e) => handleTestCaseChange(index, 'input', e.target.value)}
+                    required
+                  ></textarea>
+                </div>
+                <div>
+                  <label htmlFor={`expectedOutput-${index}`} className="block text-sm font-medium text-gray-600">Expected Output</label>
+                  <textarea
+                    id={`expectedOutput-${index}`}
+                    rows="2"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    value={testCase.expectedOutput}
+                    onChange={(e) => handleTestCaseChange(index, 'expectedOutput', e.target.value)}
+                    required
+                  ></textarea>
+                </div>
+                {testCases.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTestCase(index)}
+                    className="mt-2 self-end bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-md shadow-sm"
+                  >
+                    Remove Test Case
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={handleAddTestCase}
+              className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-300"
+            >
+              Add Another Test Case
+            </button>
           </div>
 
           <button

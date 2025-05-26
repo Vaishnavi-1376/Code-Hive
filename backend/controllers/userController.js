@@ -13,97 +13,104 @@ const generateToken = (user) => {
 };
 
 const registerUser = async (req, res) => {
-    const { fullName, username, email, password, userType } = req.body;
+    const { fullName, username, email, password } = req.body;
 
     try {
         if (!fullName || !username || !email || !password) {
-            return res.status(400).json({ message: 'Please fill all required fields' });
+            return res.status(400).json({ message: 'Please fill in all required fields: Full Name, Username, Email, and Password.' });
         }
 
-        const existingEmail = await User.findOne({ email });
-        if (existingEmail) return res.status(400).json({ message: 'Email already in use' });
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: 'Email already registered.' });
+        }
 
         const existingUsername = await User.findOne({ username });
-        if (existingUsername) return res.status(400).json({ message: 'Username already taken' });
+        if (existingUsername) {
+            return res.status(400).json({ message: 'Username is already taken. Please choose a different one.' });
+        }
 
         const verifyToken = crypto.randomBytes(32).toString('hex');
-        const verifyTokenExpiry = Date.now() + 24 * 60 * 60 * 1000;
+        const verifyTokenExpiry = Date.now() + 60 * 60 * 1000; // 1 hour 
 
-        const user = await User.create({
+        const newUser = await User.create({
             fullName,
             username,
             email,
-            password,
-            userType: userType || 'user',
+            password: password, 
             verifyToken,
             verifyTokenExpiry,
+            isVerified: false,
         });
 
-        const verificationUrl = `http://localhost:5173/verify/${verifyToken}`;
+        const verifyUrl = `http://localhost:5173/verify/${verifyToken}`;
+        await sendEmail(email, 'Verify Your Email for Online Judge', `Please click this link to verify your email: ${verifyUrl}`);
 
-        const message = `
-            <h3>Email Verification</h3>
-            <p>Please click the link below to verify your email:</p>
-            <a href="${verificationUrl}">${verificationUrl}</a>
-        `;
-
-        await sendEmail(user.email, 'Verify your email', message);
-
-        res.status(201).json({ message: 'Registration successful. Please check your email to verify your account.' });
+        res.status(201).json({ message: 'User registered successfully! Check your email to verify your account.' });
     } catch (error) {
         console.error('Registration error:', error);
-        res.status(500).json({ message: 'Server error' });
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(val => val.message);
+            return res.status(400).json({ message: messages.join(', ') });
+        }
+        res.status(500).json({ message: 'Server error during registration.' });
     }
 };
-
 const verifyEmail = async (req, res) => {
     const { token } = req.params;
-
     try {
-        console.log('Received token:', token);
-
-        const user = await User.findOne({
-            verifyToken: token,
-            verifyTokenExpiry: { $gt: Date.now() },
-        });
-
+        console.log('🔍 Verifying token received:', token);
+        const user = await User.findOne({ verifyToken: token });
         if (!user) {
-            console.log('Verification failed. Token not found or expired.');
-            return res.status(400).json({ message: 'Invalid or expired token' });
+            console.log(' Invalid token: User not found with this verification token.');
+            return res.status(400).json({ message: 'Invalid verification link.' });
         }
-
+        console.log('User found for token:', user.email);
+        if (user.isVerified) {
+            console.log(' Email already verified for:', user.email);
+            return res.status(400).json({ message: 'Your email is already verified. You can now log in.' });
+        }
+        if (user.verifyTokenExpiry && user.verifyTokenExpiry < Date.now()) {
+            console.log('Token expired for user:', user.email);
+            return res.status(400).json({ message: 'Your verification link has expired. Please request a new verification email.' });
+        }
         user.isVerified = true;
         user.verifyToken = undefined;
         user.verifyTokenExpiry = undefined;
         await user.save();
-
-        console.log('User email verified successfully:', user.email);
-        res.status(200).json({ message: 'Email verified successfully' });
+        console.log('Email verified successfully for:', user.email);
+        res.status(200).json({ message: 'Email verified successfully!' });
     } catch (error) {
-        console.error('Email verification error:', error);
-        res.status(500).json({ message: 'Server error' });
+        console.error(' Server error during email verification:', error);
+        res.status(500).json({ message: 'Server error during email verification.' });
     }
 };
 
 const loginUser = async (req, res) => {
+    console.log('--- LOGIN REQUEST HIT CONTROLLER ---');
+    console.log('Incoming Request Body:', req.body);
     const { email, password } = req.body;
-
     try {
         if (!email || !password) {
+            console.log(' Login failed: Missing email or password.');
             return res.status(400).json({ message: 'Please provide email and password' });
         }
-
         const user = await User.findOne({ email: email.toLowerCase() });
-        if (!user) return res.status(401).json({ message: 'Invalid email or password' });
-
+        if (!user) {
+            console.log(' Login failed: User not found with this email.');
+            return res.status(401).json({ message: 'Invalid email or password' });
+        }
         if (!user.isVerified) {
+            console.log('Login failed: Email not verified for user:', user.email);
             return res.status(403).json({ message: 'Please verify your email to log in' });
         }
-
         const isMatch = await user.matchPassword(password);
-        if (!isMatch) return res.status(401).json({ message: 'Invalid email or password' });
-
+        if (!isMatch) {
+            console.log(' Login failed: Password mismatch for user:', user.email);
+            return res.status(401).json({ message: 'Invalid email or password' });
+        }
         const token = generateToken(user);
+        console.log(' Login successful for:', user.email);
         res.status(200).json({
             user: {
                 id: user._id,
@@ -115,7 +122,7 @@ const loginUser = async (req, res) => {
             token,
         });
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('Login error in catch block:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -137,12 +144,10 @@ const getProfile = async (req, res) => {
 
 const updateProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
-
     if (user) {
         user.fullName = req.body.fullName || user.fullName;
         user.username = req.body.username || user.username;
         user.email = req.body.email || user.email;
-
         if (req.file) {
             if (user.profilePic && user.profilePic !== '/uploads/default-profile.png') {
                 const oldProfilePicPath = path.join(__dirname, '../', user.profilePic);
@@ -154,9 +159,7 @@ const updateProfile = async (req, res) => {
             }
             user.profilePic = `/uploads/${req.file.filename}`;
         }
-
         const updatedUser = await user.save();
-
         res.json({
             _id: updatedUser._id,
             fullName: updatedUser.fullName,

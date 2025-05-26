@@ -19,8 +19,7 @@ const DashboardPage = () => {
           {user ? (user.fullName || user.username || user.email) : 'Guest'}!
         </h2>
         <p className="text-gray-600 mb-8">
-          This is your personalized dashboard. You can customize this page to show
-          relevant information, quick links, or recent activities.
+        
         </p>
 
         <div className="flex flex-wrap justify-center gap-4">
@@ -30,21 +29,10 @@ const DashboardPage = () => {
           >
             Go To Problems
           </Link>
-          <Link
-            to="/submissions"
-            className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105"
-          >
-            View Submissions
-          </Link>
-          <Link
-            to="/profile"
-            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105"
-          >
-            Manage Profile
-          </Link>
+        
+         
 
-          { }
-          { }
+         
           <Link
             to="/add-problem"
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105"
