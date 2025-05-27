@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 const path = require('path');
 const fs = require('fs');
+
 const generateToken = (user) => {
     return jwt.sign(
         { id: user._id, userType: user.userType },
@@ -37,7 +38,7 @@ const registerUser = async (req, res) => {
             fullName,
             username,
             email,
-            password: password, 
+            password: password,
             verifyToken,
             verifyTokenExpiry,
             isVerified: false,
@@ -56,6 +57,7 @@ const registerUser = async (req, res) => {
         res.status(500).json({ message: 'Server error during registration.' });
     }
 };
+
 const verifyEmail = async (req, res) => {
     const { token } = req.params;
     try {
@@ -109,6 +111,9 @@ const loginUser = async (req, res) => {
             console.log(' Login failed: Password mismatch for user:', user.email);
             return res.status(401).json({ message: 'Invalid email or password' });
         }
+
+        console.log(`User type from DB for ${user.email}: ${user.userType}`);
+
         const token = generateToken(user);
         console.log(' Login successful for:', user.email);
         res.status(200).json({
@@ -118,6 +123,7 @@ const loginUser = async (req, res) => {
                 username: user.username,
                 email: user.email,
                 profilePic: user.profilePic,
+                userType: user.userType, 
             },
             token,
         });

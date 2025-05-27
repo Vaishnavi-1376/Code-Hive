@@ -5,39 +5,39 @@ import { useAuth } from '../context/AuthContext';
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs/components/prism-core';
 import 'prismjs/themes/prism.css';
-import 'prismjs/components/prism-clike';     
+import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-java';
-import 'prismjs/components/prism-c';          
-import 'prismjs/components/prism-cpp';        
+import 'prismjs/components/prism-c';
+import 'prismjs/components/prism-cpp';
 
 const ProblemDetailPage = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [problem, setProblem] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [problemLoading, setProblemLoading] = useState(true);
+    const [problemError, setProblemError] = useState('');
     const [deleteMessage, setDeleteMessage] = useState('');
     const [deleteError, setDeleteError] = useState('');
-    const [code, setCode] = useState(''); 
-    const [output, setOutput] = useState(''); 
-    const [compiling, setCompiling] = useState(false); 
-    const [compilerError, setCompilerError] = useState(''); 
-    const [userInput, setUserInput] = useState(''); 
-    const [language, setLanguage] = useState('javascript'); 
-    const [submissionResults, setSubmissionResults] = useState(null); 
-    const [submitting, setSubmitting] = useState(false); 
-    const [submissionError, setSubmissionError] = useState(''); 
-    const [overallVerdict, setOverallVerdict] = useState(''); 
-    const { token, user } = useAuth();
-    const navigate = useNavigate();
+    const [code, setCode] = useState('');
+    const [output, setOutput] = useState('');
+    const [compiling, setCompiling] = useState(false);
+    const [compilerError, setCompilerError] = useState('');
+    const [userInput, setUserInput] = useState('');
+    const [language, setLanguage] = useState('javascript');
+    const [submissionResults, setSubmissionResults] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
+    const [submissionError, setSubmissionError] = useState('');
+    const [overallVerdict, setOverallVerdict] = useState('');
+    const { token, user, loading: authLoading } = useAuth();
 
     const initialCodeSnippets = {
         javascript: '// Write your JavaScript code here\nconsole.log("Hello, World!");',
         python: '# Write your Python code here\nprint("Hello, World!")',
         java: '// Write your Java code here\nimport java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}',
-        cpp: '// Write your C++ code here\n   std::cout << "Hello, World!" << std::endl;\n    return 0;\n}',
-        c: '// Write your C code here\n#include <stdio.h>\n    // printf("Hello, %d!\\n", num);\n    printf("Hello, World!\\n");\n    return 0;\n}',
+        cpp: '// Write your C++ code here\n#include <iostream>\nint main() {\n    std::cout << "Hello, World!" << std::endl;\n    return 0;\n}',
+        c: '// Write your C code here\n#include <stdio.h>\nint main() {\n    printf("Hello, World!\\n");\n    return 0;\n}',
     };
 
     const getPrismLanguage = (lang) => {
@@ -53,8 +53,19 @@ const ProblemDetailPage = () => {
             case 'c':
                 return languages.c;
             default:
-                return languages.clike; 
+                return languages.clike;
         }
+    };
+
+    const handleLanguageChange = (e) => {
+        const newLanguage = e.target.value;
+        setLanguage(newLanguage);
+        setCode(initialCodeSnippets[newLanguage] || ''); 
+        setOutput('');
+        setCompilerError('');
+        setSubmissionResults(null);
+        setSubmissionError('');
+        setOverallVerdict('');
     };
 
     useEffect(() => {
@@ -70,27 +81,21 @@ const ProblemDetailPage = () => {
                 setCode(initialCodeSnippets[language]);
             } catch (err) {
                 console.error(`Error fetching problem with ID ${id}:`, err.response?.data || err);
-                setError(err.response?.data?.message || 'Failed to fetch problem details.');
+                setProblemError(err.response?.data?.message || 'Failed to fetch problem details.');
             } finally {
-                setLoading(false);
+                setProblemLoading(false);
             }
         };
 
         fetchProblem();
     }, [id, token, language]); 
 
-    const handleLanguageChange = (e) => {
-        const selectedLang = e.target.value;
-        setLanguage(selectedLang);
-        setCode(initialCodeSnippets[selectedLang] || '');
-        setOutput('');
-        setCompilerError('');
-        setSubmissionResults(null);
-        setSubmissionError('');
-        setOverallVerdict('');
-    };
-
     const handleDelete = async () => {
+        if (!user || (user.userType && user.userType.toLowerCase() !== 'admin')) {
+            setDeleteError('You are not authorized to delete problems.');
+            return;
+        }
+
         if (window.confirm('Are you sure you want to delete this problem? This action cannot be undone.')) {
             setDeleteMessage('');
             setDeleteError('');
@@ -103,7 +108,7 @@ const ProblemDetailPage = () => {
                 await axios.delete(`http://localhost:5000/api/problems/${id}`, config);
                 setDeleteMessage('Problem deleted successfully!');
                 setTimeout(() => {
-                    navigate('/problems');
+                    navigate('/dashboard');
                 }, 1500);
             } catch (err) {
                 console.error('Error deleting problem:', err.response?.data || err);
@@ -114,11 +119,11 @@ const ProblemDetailPage = () => {
 
     const handleRunCode = async () => {
         setCompiling(true);
-        setOutput(''); 
-        setCompilerError(''); 
-        setSubmissionResults(null); 
-        setSubmissionError(''); 
-        setOverallVerdict(''); 
+        setOutput('');
+        setCompilerError('');
+        setSubmissionResults(null);
+        setSubmissionError('');
+        setOverallVerdict('');
 
         if (!token) {
             setCompilerError('You must be logged in to run code.');
@@ -137,7 +142,7 @@ const ProblemDetailPage = () => {
             const res = await axios.post('http://localhost:5000/api/compile', {
                 code,
                 language,
-                input: userInput, 
+                input: userInput,
             }, config);
 
             setOutput(res.data.output);
@@ -151,11 +156,11 @@ const ProblemDetailPage = () => {
 
     const handleSubmitCode = async () => {
         setSubmitting(true);
-        setSubmissionResults(null); 
-        setSubmissionError(''); 
-        setOutput(''); 
-        setCompilerError(''); 
-        setOverallVerdict(''); 
+        setSubmissionResults(null);
+        setSubmissionError('');
+        setOutput('');
+        setCompilerError('');
+        setOverallVerdict('');
 
         if (!token) {
             setSubmissionError('You must be logged in to submit code.');
@@ -183,7 +188,7 @@ const ProblemDetailPage = () => {
             }, config);
 
             setSubmissionResults(res.data.testResults);
-            setOverallVerdict(res.data.verdict || ''); 
+            setOverallVerdict(res.data.verdict || '');
         } catch (err) {
             console.error('Error submitting code:', err.response?.data || err);
             setSubmissionError(err.response?.data?.error || err.response?.data?.message || 'Failed to submit code. Please check your code or try again.');
@@ -193,16 +198,16 @@ const ProblemDetailPage = () => {
         }
     };
 
-    const canEditOrDelete = user && (user.userType === 'admin' || (problem && problem.createdBy === user._id));
+    const canEditOrDelete = !authLoading && user && user.userType && user.userType.toLowerCase() === 'admin';
 
-    if (loading) {
+    if (authLoading || problemLoading) {
         return <div className="text-center mt-20 text-lg text-gray-700">Loading problem details...</div>;
     }
 
-    if (error) {
+    if (problemError) {
         return (
             <div className="text-center mt-20 text-lg text-red-600">
-                Error: {error}
+                Error: {problemError}
             </div>
         );
     }
@@ -320,7 +325,7 @@ const ProblemDetailPage = () => {
                             style={{
                                 fontFamily: '"Fira code", "Fira Mono", monospace',
                                 fontSize: 14,
-                                backgroundColor: '#2d2d2d', 
+                                backgroundColor: '#2d2d2d',
                                 color: '#f8f8f2',
                                 minHeight: '200px',
                             }}
@@ -397,7 +402,7 @@ const ProblemDetailPage = () => {
                                                 <>
                                                     <p className="text-sm mt-1">Expected: <pre className="inline whitespace-pre-wrap">{result.expectedOutput}</pre></p>
                                                     <p className="text-sm">Your Output: <pre className="inline whitespace-pre-wrap">{result.userOutput}</pre></p>
-                                                    {result.message.includes('\n') && ( 
+                                                    {result.message.includes('\n') && (
                                                         <p className="text-sm mt-2">Details: <pre className="whitespace-pre-wrap">{result.message}</pre></p>
                                                     )}
                                                 </>

@@ -6,15 +6,15 @@ const { DBConnection } = require('./database/db');
 const userRoutes = require('./routes/userRoutes');
 const problemRoutes = require('./routes/problemRoutes');
 const { errorHandler } = require('./middleware/errorMiddleware');
-const compilerRoutes = require('./routes/compilerRoutes'); 
-const compilerController = require('./controllers/compilerController'); 
+const compilerRoutes = require('./routes/compilerRoutes');
+const compilerController = require('./controllers/compilerController');
 const { protect } = require('./middleware/authMiddleware'); 
 dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
+    origin: 'http://localhost:5173',
+    credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -32,5 +32,5 @@ app.post('/api/submit', protect, compilerController.submitCode);
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
