@@ -60,7 +60,7 @@ const ProblemDetailPage = () => {
     const handleLanguageChange = (e) => {
         const newLanguage = e.target.value;
         setLanguage(newLanguage);
-        setCode(initialCodeSnippets[newLanguage] || ''); 
+        setCode(initialCodeSnippets[newLanguage] || '');
         setOutput('');
         setCompilerError('');
         setSubmissionResults(null);
@@ -88,7 +88,7 @@ const ProblemDetailPage = () => {
         };
 
         fetchProblem();
-    }, [id, token, language]); 
+    }, [id, token, language]);
 
     const handleDelete = async () => {
         if (!user || (user.userType && user.userType.toLowerCase() !== 'admin')) {
@@ -231,71 +231,73 @@ const ProblemDetailPage = () => {
 
     return (
         <div className="container mx-auto p-4 md:p-8">
-            <div className="bg-white shadow-xl rounded-xl p-8 md:p-10">
-                <h1 className="text-4xl font-extrabold text-gray-900 mb-4">{problem.title}</h1>
+            <div className="flex flex-col lg:flex-row gap-8">
+                <div className="lg:flex-1 bg-white shadow-xl rounded-xl p-8 md:p-10">
+                    <h1 className="text-4xl font-extrabold text-gray-900 mb-4">{problem.title}</h1>
 
-                {deleteMessage && (
-                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
-                        {deleteMessage}
-                    </div>
-                )}
-                {deleteError && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-                        {deleteError}
-                    </div>
-                )}
-
-                <div className="flex items-center space-x-4 mb-6">
-                    <span className={`px-4 py-2 rounded-full text-lg font-semibold ${
-                        problem.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
-                        problem.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                    }`}>
-                        {problem.difficulty}
-                    </span>
-                    {displayTags.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                            {displayTags.map((tag, index) => (
-                                <span key={tag + index} className="inline-block bg-blue-100 rounded-full px-3 py-1 text-sm font-semibold text-blue-800">
-                                    {tag}
-                                </span>
-                            ))}
+                    {deleteMessage && (
+                        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
+                            {deleteMessage}
                         </div>
                     )}
-                </div>
+                    {deleteError && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                            {deleteError}
+                        </div>
+                    )}
 
-                {canEditOrDelete && (
-                    <div className="flex space-x-4 mb-6">
-                        <Link
-                            to={`/edit-problem/${problem._id}`}
-                            className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-md transition duration-300"
-                        >
-                            Edit Problem
-                        </Link>
-                        <button
-                            onClick={handleDelete}
-                            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md transition duration-300"
-                        >
-                            Delete Problem
-                        </button>
+                    <div className="flex items-center space-x-4 mb-6">
+                        <span className={`px-4 py-2 rounded-full text-lg font-semibold ${
+                            problem.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
+                            problem.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                        }`}>
+                            {problem.difficulty}
+                        </span>
+                        {displayTags.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {displayTags.map((tag, index) => (
+                                    <span key={tag + index} className="inline-block bg-blue-100 rounded-full px-3 py-1 text-sm font-semibold text-blue-800">
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                )}
 
-                <h2 className="text-2xl font-bold text-gray-800 mb-3 border-b pb-2">Description</h2>
-                <div className="prose max-w-none text-gray-700 mb-8" dangerouslySetInnerHTML={{ __html: problem.description.replace(/\n/g, '<br />') }}>
+                    {canEditOrDelete && (
+                        <div className="flex space-x-4 mb-6">
+                            <Link
+                                to={`/edit-problem/${problem._id}`}
+                                className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-md transition duration-300"
+                            >
+                                Edit Problem
+                            </Link>
+                            <button
+                                onClick={handleDelete}
+                                className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md transition duration-300"
+                            >
+                                Delete Problem
+                            </button>
+                        </div>
+                    )}
+
+                    <h2 className="text-2xl font-bold text-gray-800 mb-3 border-b pb-2">Description</h2>
+                    <div className="prose max-w-none text-gray-700 mb-8" dangerouslySetInnerHTML={{ __html: problem.description.replace(/\n/g, '<br />') }}>
+                    </div>
+
+                    <h2 className="text-2xl font-bold text-gray-800 mb-3 border-b pb-2">Sample Input</h2>
+                    <pre className="bg-gray-100 p-4 rounded-md text-sm font-mono text-gray-800 overflow-auto mb-8">
+                        {problem.sampleInput || 'No sample input provided.'}
+                    </pre>
+
+                    <h2 className="text-2xl font-bold text-gray-800 mb-3 border-b pb-2">Sample Output</h2>
+                    <pre className="bg-gray-100 p-4 rounded-md text-sm font-mono text-gray-800 overflow-auto mb-8">
+                        {problem.sampleOutput || 'No sample output provided.'}
+                    </pre>
                 </div>
 
-                <h2 className="text-2xl font-bold text-gray-800 mb-3 border-b pb-2">Sample Input</h2>
-                <pre className="bg-gray-100 p-4 rounded-md text-sm font-mono text-gray-800 overflow-auto mb-8">
-                    {problem.sampleInput || 'No sample input provided.'}
-                </pre>
-
-                <h2 className="text-2xl font-bold text-gray-800 mb-3 border-b pb-2">Sample Output</h2>
-                <pre className="bg-gray-100 p-4 rounded-md text-sm font-mono text-gray-800 overflow-auto mb-8">
-                    {problem.sampleOutput || 'No sample output provided.'}
-                </pre>
-
-                <div className="mt-8 pt-6 border-t border-gray-200">
+                <div className="lg:flex-1 bg-white shadow-xl rounded-xl p-8 md:p-10"> 
                     <h2 className="text-2xl font-bold text-gray-800 mb-4">Code Editor</h2>
 
                     <div className="mb-4">
@@ -337,7 +339,7 @@ const ProblemDetailPage = () => {
                         className="w-full p-4 bg-gray-900 text-gray-50 font-mono text-sm rounded-md border border-gray-700 focus:ring-blue-500 focus:border-blue-500 min-h-[100px]"
                         value={userInput}
                         onChange={(e) => setUserInput(e.target.value)}
-                        placeholder="Enter input for your code here (this input is used only when you click 'Run Code')..."
+                        placeholder="Enter input for your code here ..."
                     ></textarea>
 
                     <div className="flex space-x-4 mt-4">

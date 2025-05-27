@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Loader from '../components/Loader'; 
 
 const EditProblemPage = () => {
     const { id } = useParams();
@@ -16,16 +17,16 @@ const EditProblemPage = () => {
     const [testCases, setTestCases] = useState([]);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
-    const [problemLoading, setProblemLoading] = useState(true); 
+    const [problemLoading, setProblemLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        
         if (authLoading) return;
+
         if (!user || (user.userType && user.userType.toLowerCase() !== 'admin')) {
             setError('You are not authorized to edit problems. Redirecting to dashboard...');
-            setTimeout(() => navigate('/dashboard'), 2000); 
-            setProblemLoading(false); 
+            setTimeout(() => navigate('/dashboard'), 2000);
+            setProblemLoading(false);
             return;
         }
 
@@ -75,7 +76,7 @@ const EditProblemPage = () => {
             };
             fetchProblem();
         }
-    }, [id, token, user, authLoading, navigate]); 
+    }, [id, token, user, authLoading, navigate]);
 
     const handleAddTestCase = () => {
         setTestCases([...testCases, { input: '', expectedOutput: '' }]);
@@ -123,7 +124,7 @@ const EditProblemPage = () => {
                 title,
                 description,
                 difficulty,
-                tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''), 
+                tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
                 sampleInput,
                 sampleOutput,
                 testCases,
@@ -149,12 +150,17 @@ const EditProblemPage = () => {
     };
 
     if (problemLoading || authLoading) {
-        return <div className="text-center mt-20 text-lg text-gray-700">Loading problem for editing...</div>;
+        return (
+            <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
+                <Loader /> 
+                <p className="text-lg text-gray-700 ml-4">Loading problem for editing...</p>
+            </div>
+        );
     }
 
     if (!user || (user.userType && user.userType.toLowerCase() !== 'admin')) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[80vh] bg-gray-50 p-4">
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-4">
                 <div className="bg-white rounded-xl shadow-lg p-8 md:p-10 w-full max-w-lg text-center text-red-600 font-bold">
                     {error || "Access Denied: You are not authorized to view this page."}
                 </div>
@@ -163,7 +169,7 @@ const EditProblemPage = () => {
     }
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-[80vh] bg-gray-50 p-4">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-4">
             <div className="bg-white rounded-xl shadow-lg p-8 md:p-10 w-full max-w-3xl">
                 <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Edit Problem</h2>
 
@@ -178,13 +184,13 @@ const EditProblemPage = () => {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-6"> 
                     <div>
-                        <label htmlFor="title" className="block text-sm font-medium text-gray-700">Problem Title</label>
+                        <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">Problem Title</label>
                         <input
                             type="text"
                             id="title"
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-gray-800 placeholder-gray-400"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             required
@@ -192,11 +198,11 @@ const EditProblemPage = () => {
                     </div>
 
                     <div>
-                        <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+                        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                         <textarea
                             id="description"
                             rows="6"
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-gray-800 placeholder-gray-400"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             required
@@ -204,10 +210,10 @@ const EditProblemPage = () => {
                     </div>
 
                     <div>
-                        <label htmlFor="difficulty" className="block text-sm font-medium text-gray-700">Difficulty</label>
+                        <label htmlFor="difficulty" className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
                         <select
                             id="difficulty"
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-gray-800"
                             value={difficulty}
                             onChange={(e) => setDifficulty(e.target.value)}
                         >
@@ -218,61 +224,61 @@ const EditProblemPage = () => {
                     </div>
 
                     <div>
-                        <label htmlFor="tags" className="block text-sm font-medium text-gray-700">Tags (comma-separated)</label>
+                        <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
                         <input
                             type="text"
                             id="tags"
                             placeholder="e.g., arrays, sorting, dynamic programming"
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-gray-800 placeholder-gray-400"
                             value={tags}
                             onChange={(e) => setTags(e.target.value)}
                         />
                     </div>
 
                     <div>
-                        <label htmlFor="sampleInput" className="block text-sm font-medium text-gray-700">Sample Input</label>
+                        <label htmlFor="sampleInput" className="block text-sm font-medium text-gray-700 mb-1">Sample Input</label>
                         <textarea
                             id="sampleInput"
                             rows="3"
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-gray-800 placeholder-gray-400"
                             value={sampleInput}
                             onChange={(e) => setSampleInput(e.target.value)}
                         ></textarea>
                     </div>
 
                     <div>
-                        <label htmlFor="sampleOutput" className="block text-sm font-medium text-gray-700">Sample Output</label>
+                        <label htmlFor="sampleOutput" className="block text-sm font-medium text-gray-700 mb-1">Sample Output</label>
                         <textarea
                             id="sampleOutput"
                             rows="3"
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-gray-800 placeholder-gray-400"
                             value={sampleOutput}
                             onChange={(e) => setSampleOutput(e.target.value)}
                         ></textarea>
                     </div>
 
-                    <div className="border border-gray-300 rounded-md p-4 bg-gray-50">
+                    <div className="border border-purple-200 rounded-lg p-4 bg-purple-50"> 
                         <h3 className="text-lg font-semibold text-gray-800 mb-4">Test Cases</h3>
                         {testCases.map((testCase, index) => (
-                            <div key={index} className="flex flex-col space-y-2 mb-4 p-3 border border-gray-200 rounded-md bg-white">
+                            <div key={index} className="flex flex-col space-y-3 mb-4 p-4 border border-purple-100 rounded-md bg-white shadow-sm"> 
                                 <p className="text-sm font-medium text-gray-700">Test Case {index + 1}</p>
                                 <div>
-                                    <label htmlFor={`input-${index}`} className="block text-sm font-medium text-gray-600">Input</label>
+                                    <label htmlFor={`input-${index}`} className="block text-sm font-medium text-gray-600 mb-1">Input</label>
                                     <textarea
                                         id={`input-${index}`}
                                         rows="2"
-                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 placeholder-gray-400"
                                         value={testCase.input}
                                         onChange={(e) => handleTestCaseChange(index, 'input', e.target.value)}
                                         required
                                     ></textarea>
                                 </div>
                                 <div>
-                                    <label htmlFor={`expectedOutput-${index}`} className="block text-sm font-medium text-gray-600">Expected Output</label>
+                                    <label htmlFor={`expectedOutput-${index}`} className="block text-sm font-medium text-gray-600 mb-1">Expected Output</label>
                                     <textarea
                                         id={`expectedOutput-${index}`}
                                         rows="2"
-                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 placeholder-gray-400"
                                         value={testCase.expectedOutput}
                                         onChange={(e) => handleTestCaseChange(index, 'expectedOutput', e.target.value)}
                                         required
@@ -282,7 +288,7 @@ const EditProblemPage = () => {
                                     <button
                                         type="button"
                                         onClick={() => handleRemoveTestCase(index)}
-                                        className="mt-2 self-end bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-md shadow-sm"
+                                        className="mt-2 self-end bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-md shadow-sm transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                                     >
                                         Remove Test Case
                                     </button>
@@ -292,7 +298,7 @@ const EditProblemPage = () => {
                         <button
                             type="button"
                             onClick={handleAddTestCase}
-                            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-300"
+                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-300 mt-4"
                         >
                             Add Another Test Case
                         </button>
@@ -300,10 +306,20 @@ const EditProblemPage = () => {
 
                     <button
                         type="submit"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300"
+                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-700 hover:from-purple-700 hover:to-indigo-800 text-white font-bold py-2 px-4 rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition duration-300"
                         disabled={submitting}
                     >
-                        {submitting ? 'Updating Problem...' : 'Update Problem'}
+                        {submitting ? (
+                            <div className="flex items-center justify-center">
+                                <svg className="animate-spin h-5 w-5 mr-3 text-white" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Updating Problem...
+                            </div>
+                        ) : (
+                            'Update Problem'
+                        )}
                     </button>
                 </form>
             </div>
