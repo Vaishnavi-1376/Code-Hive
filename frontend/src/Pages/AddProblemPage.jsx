@@ -26,7 +26,7 @@ const AddProblemPage = () => {
                 setError('You are not authorized to add problems. Redirecting to dashboard...');
                 setTimeout(() => navigate('/dashboard'), 2000);
             }
-            setPageLoading(false);
+            setPageLoading(false); // <-- Only runs after !authLoading
         }
     }, [user, authLoading, navigate]);
 
@@ -82,7 +82,7 @@ const AddProblemPage = () => {
                 title,
                 description,
                 difficulty,
-                tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
+                tags: (tags || '').split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
                 sampleInput,
                 sampleOutput,
                 testCases,
@@ -113,7 +113,7 @@ const AddProblemPage = () => {
     if (pageLoading) {
         return (
             <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
-                <Loader /> 
+                <Loader />
                 <p className="text-lg text-gray-700 ml-4">Checking authorization...</p>
             </div>
         );
@@ -131,7 +131,7 @@ const AddProblemPage = () => {
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-4">
-            <div className="bg-white rounded-xl shadow-lg p-8 md:p-10 w-full max-w-3xl"> 
+            <div className="bg-white rounded-xl shadow-lg p-8 md:p-10 w-full max-w-3xl">
                 <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Add New Problem</h2>
 
                 {message && (
@@ -145,7 +145,7 @@ const AddProblemPage = () => {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-6"> 
+                <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
                         <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">Problem Title</label>
                         <input
@@ -218,10 +218,10 @@ const AddProblemPage = () => {
                         ></textarea>
                     </div>
 
-                    <div className="border border-purple-200 rounded-lg p-4 bg-purple-50"> 
+                    <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
                         <h3 className="text-lg font-semibold text-gray-800 mb-4">Test Cases</h3>
                         {testCases.map((testCase, index) => (
-                            <div key={index} className="flex flex-col space-y-3 mb-4 p-4 border border-purple-100 rounded-md bg-white shadow-sm"> 
+                            <div key={index} className="flex flex-col space-y-3 mb-4 p-4 border border-purple-100 rounded-md bg-white shadow-sm">
                                 <p className="text-sm font-medium text-gray-700">Test Case {index + 1}</p>
                                 <div>
                                     <label htmlFor={`input-${index}`} className="block text-sm font-medium text-gray-600 mb-1">Input</label>

@@ -1,7 +1,14 @@
 const Problem = require('../models/Problem');
 const asyncHandler = require('express-async-handler');
+
+const normalizeTags = (tags) => {
+  if (Array.isArray(tags)) return tags.map(tag => tag.trim());
+  if (typeof tags === 'string') return tags.split(',').map(tag => tag.trim());
+  return [];
+};
+
 const createProblem = asyncHandler(async (req, res) => {
-const { title, description, difficulty, tags, sampleInput, sampleOutput, testCases } = req.body; 
+  const { title, description, difficulty, tags, sampleInput, sampleOutput, testCases } = req.body;
 
   if (!title || !description || !difficulty) {
     res.status(400);
@@ -18,30 +25,14 @@ const { title, description, difficulty, tags, sampleInput, sampleOutput, testCas
     title,
     description,
     difficulty,
-    tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
+    tags: normalizeTags(tags),
     sampleInput,
     sampleOutput,
-    testCases: testCases || [], 
+    testCases: testCases || [],
     createdBy: req.user._id,
   });
 
-  if (problem) {
-    res.status(201).json({
-      _id: problem._id,
-      title: problem.title,
-      description: problem.description,
-      difficulty: problem.difficulty,
-      tags: problem.tags,
-      sampleInput: problem.sampleInput,
-      sampleOutput: problem.sampleOutput,
-      testCases: problem.testCases, 
-      createdBy: problem.createdBy,
-      createdAt: problem.createdAt,
-    });
-  } else {
-    res.status(400);
-    throw new Error('Invalid problem data');
-  }
+  res.status(201).json(problem);
 });
 
 const getProblems = asyncHandler(async (req, res) => {
@@ -61,10 +52,9 @@ const getProblemById = asyncHandler(async (req, res) => {
 });
 
 const updateProblem = asyncHandler(async (req, res) => {
-  const { title, description, difficulty, tags, sampleInput, sampleOutput, testCases } = req.body; 
+  const { title, description, difficulty, tags, sampleInput, sampleOutput, testCases } = req.body;
 
   const problem = await Problem.findById(req.params.id);
-
   if (!problem) {
     res.status(404);
     throw new Error('Problem not found');
@@ -81,27 +71,15 @@ const updateProblem = asyncHandler(async (req, res) => {
   problem.title = title || problem.title;
   problem.description = description || problem.description;
   problem.difficulty = difficulty || problem.difficulty;
-  problem.tags = tags ? tags.split(',').map(tag => tag.trim()) : problem.tags;
+  problem.tags = normalizeTags(tags) || problem.tags;
   problem.sampleInput = sampleInput || problem.sampleInput;
   problem.sampleOutput = sampleOutput || problem.sampleOutput;
-  problem.testCases = testCases || problem.testCases; 
+  problem.testCases = testCases || problem.testCases;
   problem.updatedAt = Date.now();
 
   const updatedProblem = await problem.save();
 
-  res.status(200).json({
-    _id: updatedProblem._id,
-    title: updatedProblem.title,
-    description: updatedProblem.description,
-    difficulty: updatedProblem.difficulty,
-    tags: updatedProblem.tags,
-    sampleInput: updatedProblem.sampleInput,
-    sampleOutput: updatedProblem.sampleOutput,
-    testCases: updatedProblem.testCases,
-    createdBy: updatedProblem.createdBy,
-    createdAt: updatedProblem.createdAt,
-    updatedAt: updatedProblem.updatedAt,
-  });
+  res.status(200).json(updatedProblem);
 });
 
 const deleteProblem = asyncHandler(async (req, res) => {
