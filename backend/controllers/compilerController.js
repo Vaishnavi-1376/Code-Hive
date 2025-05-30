@@ -2,119 +2,93 @@ const asyncHandler = require('express-async-handler');
 const { spawn } = require('child_process');
 const fs = require('fs-extra');
 const path = require('path');
-const Problem = require('../models/Problem'); 
+const Problem = require('../models/Problem');
+const { getAIResponse } = require('../utils/geminiService'); 
 const baseTempDir = path.join(__dirname, 'temp_code');
-fs.ensureDirSync(baseTempDir); 
+fs.ensureDirSync(baseTempDir);
+
 
 const languageConfigs = {
     javascript: {
         extension: 'js',
         command: 'node',
         args: (filepath) => [filepath],
-        compileCommand: null,
-        compileArgs: null,
-        needsSubdirectory: false,
+        compileCommand: null, 
+        compileArgs: () => [],
     },
     python: {
         extension: 'py',
         command: 'python',
         args: (filepath) => [filepath],
-        compileCommand: null,
-        compileArgs: null,
-        needsSubdirectory: false,
+        compileCommand: null, 
+        compileArgs: () => [],
     },
     java: {
         extension: 'java',
-        compileCommand: 'javac',
-        compileArgs: (tempSubDirPath) => ['Main.java'],
         command: 'java',
         args: () => ['Main'],
-        needsSubdirectory: true,
+        compileCommand: 'javac',
+        compileArgs: (tempSubDirPath) => ['Main.java'],
     },
     cpp: {
         extension: 'cpp',
+        command: './a.out', 
+        args: () => [],
         compileCommand: 'g++',
-        compileArgs: (filepath, tempSubDirPath, filenameWithoutExt) => [
-            filepath,
-            '-o',
-            path.join(tempSubDirPath, filenameWithoutExt + '.exe'),
-            '-std=c++17',
-            '-O2',
-            '-Wall',
-            '-Wextra',
-        ],
-        command: null, 
-        needsSubdirectory: false,
+        compileArgs: (filepath, tempSubDirPath, filenameWithoutExt) => [filepath, '-o', path.join(tempSubDirPath, filenameWithoutExt)],
     },
     c: {
         extension: 'c',
+        command: './a.out', 
+        args: () => [],
         compileCommand: 'gcc',
-        compileArgs: (filepath, tempSubDirPath, filenameWithoutExt) => [
-            filepath,
-            '-o',
-            path.join(tempSubDirPath, filenameWithoutExt + '.exe'),
-            '-std=c11',
-            '-O2',
-            '-Wall',
-            '-Wextra',
-        ],
-        command: null,
-        args: null,
-        needsSubdirectory: false,
+        compileArgs: (filepath, tempSubDirPath, filenameWithoutExt) => [filepath, '-o', path.join(tempSubDirPath, filenameWithoutExt)],
     },
 };
 
-const executeCommand = (command, args, input, options = {}) => {
+const executeCommand = (command, args, input, options) => {
     return new Promise((resolve, reject) => {
-        console.log(`[EXECUTE_CMD] Spawning: ${command} ${args.join(' ')}`);
-        const proc = spawn(command, args, { ...options, shell: true });
+        const child = spawn(command, args, options);
+
         let stdout = '';
         let stderr = '';
-        let timeoutId;
 
-        if (options.timeout) {
-            timeoutId = setTimeout(() => {
-                proc.kill('SIGTERM');
-                reject(new Error(`Execution timed out after ${options.timeout / 1000} seconds. (Time Limit Exceeded)`));
-            }, options.timeout);
+        if (input) {
+            child.stdin.write(input);
+            child.stdin.end();
         }
 
-        proc.stdout.on('data', (data) => {
+        child.stdout.on('data', (data) => {
             stdout += data.toString();
         });
 
-        proc.stderr.on('data', (data) => {
+        child.stderr.on('data', (data) => {
             stderr += data.toString();
         });
 
-        if (input !== null && input !== undefined) { 
-            proc.stdin.write(input);
-        }
-        proc.stdin.end();
+        let timeoutId = setTimeout(() => {
+            child.kill('SIGTERM'); 
+            reject(new Error('Time Limit Exceeded'));
+        }, options.timeout || 5000); 
 
-        proc.on('close', (code) => {
-            if (timeoutId) clearTimeout(timeoutId);
-            console.log(`[EXECUTE_CMD] Process closed with code: ${code}`); 
-            console.log(`[EXECUTE_CMD] stdout: '${stdout.trim()}'`);
-            console.log(`[EXECUTE_CMD] stderr: '${stderr.trim()}'`);
-            if (code === 0) {
-                resolve({ stdout, stderr: stderr.trim() });
+        child.on('close', (code) => {
+            clearTimeout(timeoutId);
+            if (code !== 0 && stderr) {
+                resolve({ stdout, stderr });
+            } else if (code !== 0) {
+                reject(new Error(`Process exited with code ${code}.`));
             } else {
-                reject(new Error(stderr.trim() || `Process exited with code ${code}`));
+                resolve({ stdout, stderr });
             }
         });
 
-        proc.on('error', (err) => {
-            if (timeoutId) clearTimeout(timeoutId);
-            console.error(`[EXECUTE_CMD] Process spawn error:`, err.message);
-            if (err.code === 'ENOENT') {
-                reject(new Error(`Command not found: '${command}'. Please ensure the compiler/interpreter is installed and in your PATH.`));
-            } else {
-                reject(new Error(`Failed to start process: ${err.message}`));
-            }
+        child.on('error', (err) => {
+            clearTimeout(timeoutId);
+            reject(new Error(`Failed to start process or command not found: ${err.message}`));
         });
     });
 };
+
 
 const runCode = asyncHandler(async (req, res) => {
     const { code, language, input = '' } = req.body;
@@ -148,6 +122,7 @@ const runCode = asyncHandler(async (req, res) => {
 
     let compilationError = '';
     let executionOutput = '';
+    let aiExplanation = ''; 
 
     try {
         await fs.writeFile(filepath, code);
@@ -155,7 +130,7 @@ const runCode = asyncHandler(async (req, res) => {
             console.log(`[RunCode] Compiling ${language} code in ${tempSubDirPath}...`);
             let compileArgs;
             if (language === 'java') {
-                compileArgs = config.compileArgs(tempSubDirPath);
+                compileArgs = config.compileArgs(tempSubDirPath); 
             } else {
                 compileArgs = config.compileArgs(filepath, tempSubDirPath, filenameWithoutExt);
             }
@@ -166,12 +141,28 @@ const runCode = asyncHandler(async (req, res) => {
                     compilationError = `Compilation Warnings/Diagnostics:\n${compileStderr}`;
                     if (compileStderr.toLowerCase().includes('error:') || compileStderr.toLowerCase().includes('fatal error')) {
                         console.error('[RunCode] Compilation failed:', compilationError);
-                        return res.status(400).json({ error: compilationError });
+                        const prompt = `I encountered a compilation error in a ${language} program. Please explain the following error and suggest potential fixes.
+                        
+                        Code:\n\`\`\`${language}\n${code}\n\`\`\`
+                        
+                        Compilation Error:\n\`\`\`\n${compilationError}\n\`\`\`
+                        
+                        Provide concise explanation and actionable steps.`;
+                        aiExplanation = await getAIResponse(prompt);
+                        return res.status(400).json({ error: compilationError, aiExplanation }); 
                     }
                 }
             } catch (err) {
                 console.error('[RunCode] Compilation process failed to start or errored:', err.message);
-                return res.status(400).json({ error: `Compilation Failed: ${err.message}` });
+    
+                const prompt = `I encountered an issue starting the compiler for a ${language} program, or the compilation process itself failed. The error message is: "${err.message}".
+                
+                Code:\n\`\`\`${language}\n${code}\n\`\`\`
+                
+                Please explain what might be causing this compiler setup/process error and suggest troubleshooting steps.`;
+                aiExplanation = await getAIResponse(prompt);
+            
+                return res.status(400).json({ error: `Compilation Failed: ${err.message}`, aiExplanation }); 
             }
         }
 
@@ -181,7 +172,7 @@ const runCode = asyncHandler(async (req, res) => {
         let executionCwd = tempSubDirPath;
 
         if (language === 'cpp' || language === 'c') {
-            commandToRun = path.join(tempSubDirPath, filenameWithoutExt + '.exe');
+            commandToRun = path.join(tempSubDirPath, filenameWithoutExt + (process.platform === 'win32' ? '.exe' : ''));
             executionArgs = [];
         } else {
             commandToRun = config.command;
@@ -192,20 +183,33 @@ const runCode = asyncHandler(async (req, res) => {
             commandToRun,
             executionArgs,
             input,
-            { timeout: 5000, cwd: executionCwd }
+            { timeout: 2000, cwd: executionCwd } 
         );
 
         executionOutput = runStdout.trim();
 
         if (runStderr) {
             executionOutput = `${executionOutput}\n\nRuntime Warnings/Errors:\n${runStderr.trim()}`;
+           
+            if (runStderr.toLowerCase().includes('error:') || runStderr.toLowerCase().includes('exception') || runStderr.toLowerCase().includes('traceback')) {
+                const prompt = `I encountered a runtime error/warning in a ${language} program. Please explain the following output and suggest potential fixes.
+                
+                Code:\n\`\`\`${language}\n${code}\n\`\`\`
+                
+                Input:\n\`\`\`\n${input}\n\`\`\`
+                
+                Runtime Output (including errors/warnings):\n\`\`\`\n${runStderr.trim()}\n\`\`\`
+                
+                Provide concise explanation and actionable steps.`;
+                aiExplanation = await getAIResponse(prompt);
+            }
         }
 
         if (compilationError) {
             executionOutput = `${compilationError}\n\n${executionOutput}`;
         }
 
-        res.status(200).json({ output: executionOutput });
+        res.status(200).json({ output: executionOutput, aiExplanation }); 
 
     } catch (executionError) {
         console.error(`[RunCode] Error during ${language} execution:`, executionError.message);
@@ -213,7 +217,18 @@ const runCode = asyncHandler(async (req, res) => {
         if (compilationError && !errorToReturn.includes("Compilation Failed")) {
             errorToReturn = `${compilationError}\n\n${errorToReturn}`;
         }
-        res.status(500).json({ error: errorToReturn });
+        const prompt = `I encountered a runtime error during the execution of a ${language} program. Please explain the following error and suggest potential fixes.
+        
+        Code:\n\`\`\`${language}\n${code}\n\`\`\`
+        
+        Input:\n\`\`\`\n${input}\n\`\`\`
+        
+        Error message:\n\`\`\`\n${executionError.message}\n\`\`\`
+        
+        Provide concise explanation and actionable steps.`;
+        aiExplanation = await getAIResponse(prompt);
+
+        res.status(500).json({ error: errorToReturn, aiExplanation }); 
     } finally {
         try {
             await fs.remove(tempSubDirPath);
@@ -223,6 +238,7 @@ const runCode = asyncHandler(async (req, res) => {
         }
     }
 });
+
 
 const submitCode = asyncHandler(async (req, res) => {
     const { code, language, problemId } = req.body;
@@ -266,7 +282,7 @@ const submitCode = asyncHandler(async (req, res) => {
     let filenameWithoutExt = `${uniqueDirName}`;
 
     if (language === 'java') {
-        filename = 'Main.java';
+        filename = 'Main.java'; 
         filepath = path.join(tempSubDirPath, filename);
     } else {
         filename = `${filenameWithoutExt}.${config.extension}`;
@@ -275,6 +291,7 @@ const submitCode = asyncHandler(async (req, res) => {
 
     const testResults = [];
     let overallVerdict = 'Accepted';
+    let compilationAIExplanation = ''; 
 
     try {
         await fs.writeFile(filepath, code);
@@ -284,31 +301,50 @@ const submitCode = asyncHandler(async (req, res) => {
             console.log(`[SubmitCode] Compiling ${language} code in ${tempSubDirPath}...`);
             let compileArgs;
             if (language === 'java') {
-                compileArgs = config.compileArgs(tempSubDirPath);
+                compileArgs = config.compileArgs(tempSubDirPath); 
             } else {
                 compileArgs = config.compileArgs(filepath, tempSubDirPath, filenameWithoutExt);
             }
 
             try {
-                const { stderr: compileStderr } = await executeCommand(config.compileCommand, compileArgs, null, { timeout: 10000, cwd: tempSubDirPath });
+                const { stderr: compileStderr } = await executeCommand(config.compileCommand, compileArgs, null, { timeout: 3000, cwd: tempSubDirPath });
                 if (compileStderr) {
                     const compilationError = `Compilation Warnings/Diagnostics:\n${compileStderr}`;
                     if (compileStderr.toLowerCase().includes('error:') || compileStderr.toLowerCase().includes('fatal error')) {
                         console.error('[SubmitCode] Compilation failed:', compilationError);
+                        
+                        const prompt = `I encountered a compilation error in a ${language} program during a code submission. Please explain the following error and suggest potential fixes.
+                        
+                        Code:\n\`\`\`${language}\n${code}\n\`\`\`
+                        
+                        Compilation Error:\n\`\`\`\n${compilationError}\n\`\`\`
+                        
+                        Provide concise explanation and actionable steps.`;
+                        compilationAIExplanation = await getAIResponse(prompt);
+
                         testCases.forEach((_, index) => {
                             testResults.push({
                                 testCaseId: index + 1,
                                 passed: false,
                                 message: `Compilation Error: ${compilationError}`,
-                                expectedOutput: 'N/A',
-                                userOutput: 'N/A',
+                                expectedOutput: 'N/A', 
+                                userOutput: 'N/A',    
+                                aiExplanation: compilationAIExplanation,
                             });
                         });
-                        return res.status(200).json({ testResults, verdict: 'Compilation Error' }); 
+                        return res.status(200).json({ testResults, verdict: 'Compilation Error' });
                     }
                 }
             } catch (err) {
                 console.error('[SubmitCode] Compilation process failed to start or errored:', err.message);
+               
+                const prompt = `I encountered an issue starting the compiler for a ${language} program, or the compilation process itself failed during a code submission. The error message is: "${err.message}".
+                
+                Code:\n\`\`\`${language}\n${code}\n\`\`\`
+                
+                Please explain what might be causing this compiler setup/process error and suggest troubleshooting steps.`;
+                compilationAIExplanation = await getAIResponse(prompt);
+
                 testCases.forEach((_, index) => {
                     testResults.push({
                         testCaseId: index + 1,
@@ -316,9 +352,10 @@ const submitCode = asyncHandler(async (req, res) => {
                         message: `Compilation Failed: ${err.message}`,
                         expectedOutput: 'N/A',
                         userOutput: 'N/A',
+                        aiExplanation: compilationAIExplanation, 
                     });
                 });
-                return res.status(200).json({ testResults, verdict: 'Compilation Error' }); 
+                return res.status(200).json({ testResults, verdict: 'Compilation Error' });
             }
         }
 
@@ -327,6 +364,7 @@ const submitCode = asyncHandler(async (req, res) => {
             let userOutput = '';
             let message = '';
             let passed = false;
+            let aiExplanationForTestCase = ''; 
 
             console.log(`[SubmitCode] Executing test case ${i + 1} for ${language} in ${tempSubDirPath}...`);
             let commandToRun;
@@ -334,8 +372,8 @@ const submitCode = asyncHandler(async (req, res) => {
             let executionCwd = tempSubDirPath;
 
             if (language === 'cpp' || language === 'c') {
-                commandToRun = path.join(tempSubDirPath, filenameWithoutExt + '.exe');
-                executionArgs = []; 
+                commandToRun = path.join(tempSubDirPath, filenameWithoutExt + (process.platform === 'win32' ? '.exe' : ''));
+                executionArgs = [];
             } else {
                 commandToRun = config.command;
                 executionArgs = config.args(filepath);
@@ -345,8 +383,8 @@ const submitCode = asyncHandler(async (req, res) => {
                 const { stdout, stderr } = await executeCommand(
                     commandToRun,
                     executionArgs,
-                    testCase.input, 
-                    { timeout: executionTimeLimit, cwd: executionCwd }
+                    testCase.input,
+                    { timeout: executionTimeLimit, cwd: executionCwd } 
                 );
 
                 userOutput = stdout.trim();
@@ -358,29 +396,77 @@ const submitCode = asyncHandler(async (req, res) => {
                 } else {
                     passed = false;
                     message = 'Wrong Answer';
-                    if (overallVerdict === 'Accepted') {
+                    if (overallVerdict === 'Accepted') { 
                         overallVerdict = 'Wrong Answer';
                     }
+                    const problemDescription = problem.description; 
+                    const prompt = `Your code for a problem called "${problem.title}" (Description: ${problem.description}) failed a test case.
+                    
+                    Problem Description: ${problem.description}
+                    
+                    Code:\n\`\`\`${language}\n${code}\n\`\`\`
+                    
+                    Test Case Input:\n\`\`\`\n${testCase.input}\n\`\`\`
+                    
+                    Expected Output:\n\`\`\`\n${expected}\n\`\`\`
+                    
+                    Your Code's Output:\n\`\`\`\n${userOutput}\n\`\`\`
+                    
+                    The test case failed with a "Wrong Answer". Please explain why the output might be incorrect and suggest common debugging strategies or potential logic errors to look for, specific to this problem and code if possible. Provide actionable advice.`;
+                    aiExplanationForTestCase = await getAIResponse(prompt);
                 }
 
                 if (stderr) {
                     message += `\nRuntime Warnings/Errors:\n${stderr.trim()}`;
-                    if (stderr.toLowerCase().includes('error:') && overallVerdict === 'Accepted') {
+
+                    if ((stderr.toLowerCase().includes('error:') || stderr.toLowerCase().includes('exception') || stderr.toLowerCase().includes('traceback')) && overallVerdict === 'Accepted') {
                         overallVerdict = 'Runtime Error';
+                    }
+            
+                    if (stderr.toLowerCase().includes('error:') || stderr.toLowerCase().includes('exception') || stderr.toLowerCase().includes('traceback')) {
+                        const prompt = `Your ${language} code for a problem called "${problem.title}" (Description: ${problem.description}) produced a runtime error/warning during a test case execution.
+                        
+                        Code:\n\`\`\`${language}\n${code}\n\`\`\`
+                        
+                        Test Case Input:\n\`\`\`\n${testCase.input}\n\`\`\`
+                        
+                        Runtime Error/Warnings Output:\n\`\`\`\n${stderr.trim()}\n\`\`\`
+                        
+                        Please explain this runtime issue and suggest potential fixes. Provide actionable advice.`;
+                        aiExplanationForTestCase = await getAIResponse(prompt);
                     }
                 }
 
             } catch (execErr) {
                 console.error(`[SubmitCode] Test Case ${i + 1} execution failed:`, execErr.message);
-                userOutput = execErr.message;
+                userOutput = execErr.message; 
                 if (execErr.message.includes('Time Limit Exceeded')) {
                     message = 'Time Limit Exceeded';
                     overallVerdict = 'Time Limit Exceeded';
+                  
+                    const prompt = `Your ${language} code for a problem called "${problem.title}" (Description: ${problem.description}) exceeded the time limit (${executionTimeLimit / 1000} seconds) on the following test case.
+                    
+                    Code:\n\`\`\`${language}\n${code}\n\`\`\`
+                    
+                    Test Case Input:\n\`\`\`\n${testCase.input}\n\`\`\`
+                    
+                    Please explain common reasons for Time Limit Exceeded (TLE) in competitive programming for this problem type and suggest optimization strategies (e.g., algorithmic complexity, data structures) to resolve it.`;
+                    aiExplanationForTestCase = await getAIResponse(prompt);
+                   
                 } else {
                     message = `Runtime Error: ${execErr.message}`;
-                    if (overallVerdict !== 'Time Limit Exceeded') {
+                    if (overallVerdict !== 'Time Limit Exceeded') { 
                         overallVerdict = 'Runtime Error';
                     }
+                  
+                    const prompt = `Your ${language} code for a problem called "${problem.title}" (Description: ${problem.description}) failed with a runtime error during a test case execution. The error message is: "${execErr.message}".
+                    
+                    Code:\n\`\`\`${language}\n${code}\n\`\`\`
+                    
+                    Test Case Input:\n\`\`\`\n${testCase.input}\n\`\`\`
+                    
+                    Please explain this runtime error and suggest potential fixes. Provide actionable advice.`;
+                    aiExplanationForTestCase = await getAIResponse(prompt);
                 }
                 passed = false;
             }
@@ -391,6 +477,7 @@ const submitCode = asyncHandler(async (req, res) => {
                 message: message,
                 expectedOutput: testCase.expectedOutput,
                 userOutput: userOutput,
+                aiExplanation: aiExplanationForTestCase, 
             });
 
             if (overallVerdict === 'Compilation Error' || overallVerdict === 'Time Limit Exceeded' || overallVerdict === 'Runtime Error') {
@@ -402,7 +489,19 @@ const submitCode = asyncHandler(async (req, res) => {
 
     } catch (overallError) {
         console.error(`[SubmitCode] Overall error during submission process:`, overallError.message);
-        res.status(500).json({ error: 'An unexpected error occurred during submission.', verdict: 'Internal Error' });
+        let submissionOverallAIExplanation = '';
+        const prompt = `An unexpected error occurred during the overall code submission process for a ${language} program. The error message is: "${overallError.message}".
+        
+        Code:\n\`\`\`${language}\n${code}\n\`\`\`
+        
+        Please provide some general troubleshooting steps for an unexpected submission error.`;
+        submissionOverallAIExplanation = await getAIResponse(prompt);
+
+        res.status(500).json({
+            error: 'An unexpected error occurred during submission.',
+            verdict: 'Internal Error',
+            aiExplanation: submissionOverallAIExplanation 
+        });
     } finally {
         try {
             await fs.remove(tempSubDirPath);
@@ -413,4 +512,7 @@ const submitCode = asyncHandler(async (req, res) => {
     }
 });
 
-module.exports = { runCode, submitCode };
+module.exports = {
+    runCode,
+    submitCode,
+};

@@ -11,6 +11,7 @@ import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-java';
 import 'prismjs/components/prism-c';
 import 'prismjs/components/prism-cpp';
+import { getAIResponse } from '../utils/ai'; 
 
 const ProblemDetailPage = () => {
     const { id } = useParams();
@@ -31,6 +32,9 @@ const ProblemDetailPage = () => {
     const [submissionError, setSubmissionError] = useState('');
     const [overallVerdict, setOverallVerdict] = useState('');
     const { token, user, loading: authLoading } = useAuth();
+    const [aiRunCodeExplanation, setAiRunCodeExplanation] = useState(''); 
+    const [aiHint, setAiHint] = useState(''); 
+    const [hintLoading, setHintLoading] = useState(false); 
 
     const initialCodeSnippets = {
         javascript: '// Write your JavaScript code here\nconsole.log("Hello, World!");',
@@ -66,6 +70,8 @@ const ProblemDetailPage = () => {
         setSubmissionResults(null);
         setSubmissionError('');
         setOverallVerdict('');
+        setAiRunCodeExplanation(''); 
+        setAiHint(''); 
     };
 
     useEffect(() => {
@@ -124,6 +130,7 @@ const ProblemDetailPage = () => {
         setSubmissionResults(null);
         setSubmissionError('');
         setOverallVerdict('');
+        setAiRunCodeExplanation('');
 
         if (!token) {
             setCompilerError('You must be logged in to run code.');
@@ -146,9 +153,11 @@ const ProblemDetailPage = () => {
             }, config);
 
             setOutput(res.data.output);
+            setAiRunCodeExplanation(res.data.aiExplanation || '');
         } catch (err) {
             console.error('Error running code:', err.response?.data || err);
             setCompilerError(err.response?.data?.error || err.response?.data?.message || 'Failed to run code. Please check your code for syntax errors or unexpected output.');
+            setAiRunCodeExplanation(err.response?.data.aiExplanation || '');
         } finally {
             setCompiling(false);
         }
@@ -161,6 +170,7 @@ const ProblemDetailPage = () => {
         setOutput('');
         setCompilerError('');
         setOverallVerdict('');
+        setAiRunCodeExplanation(''); 
 
         if (!token) {
             setSubmissionError('You must be logged in to submit code.');
@@ -189,14 +199,47 @@ const ProblemDetailPage = () => {
 
             setSubmissionResults(res.data.testResults);
             setOverallVerdict(res.data.verdict || '');
+           
+            if (res.data.aiExplanation) {
+                setCompilerError(res.data.aiExplanation); 
+            }
         } catch (err) {
             console.error('Error submitting code:', err.response?.data || err);
             setSubmissionError(err.response?.data?.error || err.response?.data?.message || 'Failed to submit code. Please check your code or try again.');
             setOverallVerdict(err.response?.data?.verdict || 'Submission Failed');
+
+            if (err.response?.data.aiExplanation) {
+                setAiRunCodeExplanation(err.response?.data.aiExplanation); 
+            }
         } finally {
             setSubmitting(false);
         }
     };
+
+    const handleGetHint = async () => {
+        setAiHint('');
+        setHintLoading(true);
+        try {
+            const config = {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            };
+           
+            const res = await axios.post(`http://localhost:5000/api/problems/${id}/hint`, {
+                problemDescription: problem.description,
+                problemTitle: problem.title,
+                userCode: code 
+            }, config);
+            setAiHint(res.data.hint);
+        } catch (err) {
+            console.error('Error getting AI hint:', err.response?.data || err.message);
+            setAiHint('Sorry, I could not generate a hint at this time. Please try again later.');
+        } finally {
+            setHintLoading(false);
+        }
+    };
+
 
     const canEditOrDelete = !authLoading && user && user.userType && user.userType.toLowerCase() === 'admin';
 
@@ -295,9 +338,25 @@ const ProblemDetailPage = () => {
                     <pre className="bg-gray-100 p-4 rounded-md text-sm font-mono text-gray-800 overflow-auto mb-8">
                         {problem.sampleOutput || 'No sample output provided.'}
                     </pre>
+
+                    <button
+                        onClick={handleGetHint}
+                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={!user || hintLoading}
+                    >
+                        {hintLoading ? 'Getting Hint...' : 'Get AI Hint'}
+                    </button>
+
+                    {aiHint && (
+                        <div className="bg-gray-800 p-4 rounded-lg mt-4 text-white">
+                            <h3 className="text-xl font-semibold mb-2">AI Problem Hint</h3>
+                            <pre className="whitespace-pre-wrap font-sans text-sm">{aiHint}</pre>
+                        </div>
+                    )}
+
                 </div>
 
-                <div className="lg:flex-1 bg-white shadow-xl rounded-xl p-8 md:p-10"> 
+                <div className="lg:flex-1 bg-white shadow-xl rounded-xl p-8 md:p-10">
                     <h2 className="text-2xl font-bold text-gray-800 mb-4">Code Editor</h2>
 
                     <div className="mb-4">
@@ -364,6 +423,14 @@ const ProblemDetailPage = () => {
                             Error: {compilerError}
                         </div>
                     )}
+                   
+                    {aiRunCodeExplanation && (
+                        <div className="bg-blue-100 border border-blue-400 text-blue-800 px-4 py-3 rounded relative mt-4">
+                            <h4 className="font-bold text-lg mb-1">AI Assistant's Insight:</h4>
+                            <pre className="whitespace-pre-wrap font-sans text-sm text-blue-800">{aiRunCodeExplanation}</pre>
+                        </div>
+                    )}
+                   
                     {submissionError && (
                         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4 whitespace-pre-wrap">
                             Submission Error: {submissionError}
@@ -406,6 +473,12 @@ const ProblemDetailPage = () => {
                                                     <p className="text-sm">Your Output: <pre className="inline whitespace-pre-wrap">{result.userOutput}</pre></p>
                                                     {result.message.includes('\n') && (
                                                         <p className="text-sm mt-2">Details: <pre className="whitespace-pre-wrap">{result.message}</pre></p>
+                                                    )}
+                                                    {result.aiExplanation && (
+                                                        <div className="bg-blue-100 border border-blue-400 text-blue-800 px-3 py-2 rounded-md mt-2">
+                                                            <h5 className="font-bold text-md mb-1">AI Debugging Assistant:</h5>
+                                                            <pre className="whitespace-pre-wrap font-sans text-sm text-blue-800">{result.aiExplanation}</pre>
+                                                        </div>
                                                     )}
                                                 </>
                                             )}

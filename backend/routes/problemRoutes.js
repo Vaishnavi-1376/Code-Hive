@@ -6,6 +6,7 @@ const {
     getProblemById,
     updateProblem,
     deleteProblem,
+    getProblemHint, 
 } = require('../controllers/problemController');
 
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
@@ -15,5 +16,6 @@ router.get('/', getProblems);
 router.get('/:id', getProblemById);
 router.put('/:id', protect, authorizeRoles('admin'), updateProblem);
 router.delete('/:id', protect, authorizeRoles('admin'), deleteProblem);
+router.post('/:id/hint', protect, getProblemHint); 
 
 module.exports = router;
