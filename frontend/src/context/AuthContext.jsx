@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import API from '../utils/api'; 
 
 const AuthContext = createContext(null);
 
@@ -15,30 +15,53 @@ export const AuthProvider = ({ children }) => {
             return null;
         }
     });
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true); 
     const [error, setError] = useState('');
     const navigate = useNavigate();
+    const logout = useCallback(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setToken(null);
+        setUser(null);
+        setError('');
+        console.log('Logged out, navigating to /login');
+        navigate('/login');
+    }, [navigate]); 
+
     useEffect(() => {
-        if (token) {
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        } else {
-            delete axios.defaults.headers.common['Authorization']; 
-        }
         setLoading(false); 
-    }, [token]); 
+    }, []);
+
+    useEffect(() => {
+        const interceptor = API.interceptors.response.use(
+            response => response,
+            async (err) => {
+                const originalRequest = err.config;
+                if (err.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/users/login')) {
+                    originalRequest._retry = true; 
+                    console.warn('401 Unauthorized caught by interceptor. Attempting logout...');
+                    logout();
+                    return Promise.reject(err);
+                }
+                return Promise.reject(err); 
+            }
+        );
+        return () => {
+            API.interceptors.response.eject(interceptor);
+        };
+    }, [logout]); 
+
 
     const login = async (email, password) => {
         setLoading(true);
         setError('');
         try {
-            const res = await axios.post('http://localhost:5000/api/users/login', { email, password });
+            const res = await API.post('/users/login', { email, password });
             const { token: receivedToken, user: receivedUser } = res.data;
             localStorage.setItem('token', receivedToken);
-            localStorage.setItem('user', JSON.stringify(receivedUser)); 
+            localStorage.setItem('user', JSON.stringify(receivedUser));
             setToken(receivedToken);
-            setUser(receivedUser); 
-
-            axios.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
+            setUser(receivedUser);
 
             console.log('Login successful, navigating to /dashboard');
             navigate('/dashboard');
@@ -50,28 +73,17 @@ export const AuthProvider = ({ children }) => {
             setToken(null);
             setUser(null);
             localStorage.removeItem('token');
-            localStorage.removeItem('user'); 
+            localStorage.removeItem('user');
             throw err;
         } finally {
             setLoading(false);
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user'); 
-        setToken(null);
-        setUser(null);
-        setError('');
-        delete axios.defaults.headers.common['Authorization']; 
-        console.log('Logged out, navigating to /login');
-        navigate('/login');
-    };
-
     const value = {
         token,
         user,
-        loading,
+        loading, 
         error,
         login,
         logout,

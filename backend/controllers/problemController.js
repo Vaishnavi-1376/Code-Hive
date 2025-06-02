@@ -96,25 +96,15 @@ const deleteProblem = asyncHandler(async (req, res) => {
     res.status(200).json({ message: 'Problem removed successfully' });
 });
 
-
-// ADDED: Get AI hint for a problem
-// @desc    Get AI hint for a problem
-// @route   POST /api/problems/:id/hint
-// @access  Private (requires authentication)
 const getProblemHint = asyncHandler(async (req, res) => {
-    // Only userCode and language are taken from req.body.
-    // problemDescription and problemTitle will be fetched from the database for accuracy.
     const { userCode, language } = req.body;
     const problemId = req.params.id;
-
-    // Fetch problem from DB to ensure consistency and access to full problem details
     const problem = await Problem.findById(problemId);
     if (!problem) {
         res.status(404);
         throw new Error('Problem not found.');
     }
 
-    // Use problem's actual title and description from DB for prompt
     const actualProblemTitle = problem.title;
     const actualProblemDescription = problem.description;
 
@@ -126,7 +116,6 @@ const getProblemHint = asyncHandler(async (req, res) => {
     let prompt = `I am trying to solve a coding problem titled "${actualProblemTitle}" with the following description:\n\n${actualProblemDescription}\n\n`;
 
     if (userCode) {
-        // Ensure language is provided if userCode is present for better AI context
         const codeLanguage = language || 'plaintext';
         prompt += `Here is my current code in ${codeLanguage}:\n\n\`\`\`${codeLanguage}\n${userCode}\n\`\`\`\n\n`;
         prompt += `Please provide a hint that helps me debug or understand the problem better, considering my current code. Do NOT give away the full solution. Focus on common pitfalls, algorithmic ideas, or how to approach the problem's constraints. If my code has obvious syntax errors or runtime issues, point those out with a general explanation.`;
@@ -139,7 +128,6 @@ const getProblemHint = asyncHandler(async (req, res) => {
         res.status(200).json({ hint: aiResponse });
     } catch (error) {
         console.error('Error generating AI hint:', error);
-        // Provide a more user-friendly error message if AI service fails
         res.status(500).json({ error: 'Failed to generate AI hint. Please try again later.', aiExplanation: 'AI Service Error' });
     }
 });
@@ -151,5 +139,5 @@ module.exports = {
     getProblemById,
     updateProblem,
     deleteProblem,
-    getProblemHint, // Correctly exported
+    getProblemHint, 
 };

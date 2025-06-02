@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import API from '../utils/api';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Editor from 'react-simple-code-editor';
@@ -11,7 +11,7 @@ import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-java';
 import 'prismjs/components/prism-c';
 import 'prismjs/components/prism-cpp';
-import { getAIResponse } from '../utils/ai'; 
+import { getAIResponse } from '../utils/ai';
 
 const ProblemDetailPage = () => {
     const { id } = useParams();
@@ -32,9 +32,9 @@ const ProblemDetailPage = () => {
     const [submissionError, setSubmissionError] = useState('');
     const [overallVerdict, setOverallVerdict] = useState('');
     const { token, user, loading: authLoading } = useAuth();
-    const [aiRunCodeExplanation, setAiRunCodeExplanation] = useState(''); 
-    const [aiHint, setAiHint] = useState(''); 
-    const [hintLoading, setHintLoading] = useState(false); 
+    const [aiRunCodeExplanation, setAiRunCodeExplanation] = useState('');
+    const [aiHint, setAiHint] = useState('');
+    const [hintLoading, setHintLoading] = useState(false);
 
     const initialCodeSnippets = {
         javascript: '// Write your JavaScript code here\nconsole.log("Hello, World!");',
@@ -70,19 +70,14 @@ const ProblemDetailPage = () => {
         setSubmissionResults(null);
         setSubmissionError('');
         setOverallVerdict('');
-        setAiRunCodeExplanation(''); 
-        setAiHint(''); 
+        setAiRunCodeExplanation('');
+        setAiHint('');
     };
 
     useEffect(() => {
         const fetchProblem = async () => {
             try {
-                const config = {};
-                if (token) {
-                    config.headers = { Authorization: `Bearer ${token}` };
-                }
-
-                const res = await axios.get(`http://localhost:5000/api/problems/${id}`, config);
+                const res = await API.get(`/problems/${id}`);
                 setProblem(res.data);
                 setCode(initialCodeSnippets[language]);
             } catch (err) {
@@ -94,7 +89,7 @@ const ProblemDetailPage = () => {
         };
 
         fetchProblem();
-    }, [id, token, language]);
+    }, [id, language]);
 
     const handleDelete = async () => {
         if (!user || (user.userType && user.userType.toLowerCase() !== 'admin')) {
@@ -106,12 +101,7 @@ const ProblemDetailPage = () => {
             setDeleteMessage('');
             setDeleteError('');
             try {
-                const config = {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                };
-                await axios.delete(`http://localhost:5000/api/problems/${id}`, config);
+                await API.delete(`/problems/${id}`);
                 setDeleteMessage('Problem deleted successfully!');
                 setTimeout(() => {
                     navigate('/dashboard');
@@ -139,18 +129,11 @@ const ProblemDetailPage = () => {
         }
 
         try {
-            const config = {
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-            };
-
-            const res = await axios.post('http://localhost:5000/api/compile', {
+            const res = await API.post('/compile', {
                 code,
                 language,
                 input: userInput,
-            }, config);
+            });
 
             setOutput(res.data.output);
             setAiRunCodeExplanation(res.data.aiExplanation || '');
@@ -170,7 +153,7 @@ const ProblemDetailPage = () => {
         setOutput('');
         setCompilerError('');
         setOverallVerdict('');
-        setAiRunCodeExplanation(''); 
+        setAiRunCodeExplanation('');
 
         if (!token) {
             setSubmissionError('You must be logged in to submit code.');
@@ -182,26 +165,25 @@ const ProblemDetailPage = () => {
             setSubmitting(false);
             return;
         }
+        if (!user || !user.id) { 
+            setSubmissionError('User information not available. Please log in again.'); 
+            setSubmitting(false);
+            return;
+        }
 
         try {
-            const config = {
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-            };
-
-            const res = await axios.post('http://localhost:5000/api/submit', {
+            const res = await API.post('/submit', {
                 code,
                 language,
                 problemId: problem._id,
-            }, config);
+                userId: user.id, 
+            });
 
             setSubmissionResults(res.data.testResults);
             setOverallVerdict(res.data.verdict || '');
-           
+
             if (res.data.aiExplanation) {
-                setCompilerError(res.data.aiExplanation); 
+                setCompilerError(res.data.aiExplanation);
             }
         } catch (err) {
             console.error('Error submitting code:', err.response?.data || err);
@@ -209,7 +191,7 @@ const ProblemDetailPage = () => {
             setOverallVerdict(err.response?.data?.verdict || 'Submission Failed');
 
             if (err.response?.data.aiExplanation) {
-                setAiRunCodeExplanation(err.response?.data.aiExplanation); 
+                setAiRunCodeExplanation(err.response?.data.aiExplanation);
             }
         } finally {
             setSubmitting(false);
@@ -219,18 +201,19 @@ const ProblemDetailPage = () => {
     const handleGetHint = async () => {
         setAiHint('');
         setHintLoading(true);
+
+        if (!token) {
+            setAiHint('You must be logged in to get hints.');
+            setHintLoading(false);
+            return;
+        }
+
         try {
-            const config = {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            };
-           
-            const res = await axios.post(`http://localhost:5000/api/problems/${id}/hint`, {
+            const res = await API.post(`/problems/${id}/hint`, {
                 problemDescription: problem.description,
                 problemTitle: problem.title,
-                userCode: code 
-            }, config);
+                userCode: code
+            });
             setAiHint(res.data.hint);
         } catch (err) {
             console.error('Error getting AI hint:', err.response?.data || err.message);
@@ -239,7 +222,6 @@ const ProblemDetailPage = () => {
             setHintLoading(false);
         }
     };
-
 
     const canEditOrDelete = !authLoading && user && user.userType && user.userType.toLowerCase() === 'admin';
 
@@ -342,7 +324,7 @@ const ProblemDetailPage = () => {
                     <button
                         onClick={handleGetHint}
                         className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={!user || hintLoading}
+                        disabled={!user || hintLoading || authLoading}
                     >
                         {hintLoading ? 'Getting Hint...' : 'Get AI Hint'}
                     </button>
@@ -404,14 +386,14 @@ const ProblemDetailPage = () => {
                     <div className="flex space-x-4 mt-4">
                         <button
                             onClick={handleRunCode}
-                            disabled={compiling || !token}
+                            disabled={compiling || !token || authLoading}
                             className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {compiling ? 'Running Code...' : 'Run Code'}
                         </button>
                         <button
                             onClick={handleSubmitCode}
-                            disabled={submitting || !token}
+                            disabled={submitting || !token || authLoading}
                             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {submitting ? 'Submitting...' : 'Submit Code'}
@@ -423,14 +405,14 @@ const ProblemDetailPage = () => {
                             Error: {compilerError}
                         </div>
                     )}
-                   
+
                     {aiRunCodeExplanation && (
                         <div className="bg-blue-100 border border-blue-400 text-blue-800 px-4 py-3 rounded relative mt-4">
                             <h4 className="font-bold text-lg mb-1">AI Assistant's Insight:</h4>
                             <pre className="whitespace-pre-wrap font-sans text-sm text-blue-800">{aiRunCodeExplanation}</pre>
                         </div>
                     )}
-                   
+
                     {submissionError && (
                         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4 whitespace-pre-wrap">
                             Submission Error: {submissionError}

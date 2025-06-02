@@ -1,10 +1,7 @@
-// src/Pages/ProblemsListPage.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-// import { useAuth } from '../context/AuthContext'; // Not strictly needed here as problems are public
 
-// Utility function for difficulty badges
 const getDifficultyBadge = (difficulty) => {
     let bgColor, textColor;
     switch (difficulty) {
@@ -35,12 +32,10 @@ const ProblemsListPage = () => {
     const [problems, setProblems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    // const { token } = useAuth(); // No longer needed here as problems are public
-
+   
     useEffect(() => {
         const fetchProblems = async () => {
             try {
-                // No token needed for fetching public problems list
                 const res = await axios.get('http://localhost:5000/api/problems');
                 setProblems(res.data);
                 setLoading(false);

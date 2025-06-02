@@ -3,6 +3,6 @@ const router = express.Router();
 const { runCode } = require('../controllers/compilerController');
 const { protect } = require('../middleware/authMiddleware');
 
-router.post('/', protect, runCode); 
+router.post('/', protect, runCode);
 
-module.exports = router;
+module.exports = router; 
