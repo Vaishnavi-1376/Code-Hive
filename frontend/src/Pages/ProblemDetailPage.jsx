@@ -1,5 +1,7 @@
+// frontend/src/pages/ProblemDetailPage.jsx
+
 import React, { useEffect, useState } from 'react';
-import API from '../utils/api';
+import API from '../utils/api'; // This is the API utility that likely adds '/api/'
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Editor from 'react-simple-code-editor';
@@ -11,7 +13,7 @@ import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-java';
 import 'prismjs/components/prism-c';
 import 'prismjs/components/prism-cpp';
-import { getAIResponse } from '../utils/ai';
+import { getAIResponse } from '../utils/ai'; // <--- RESTORED THIS LINE!   
 
 const ProblemDetailPage = () => {
     const { id } = useParams();
@@ -117,7 +119,7 @@ const ProblemDetailPage = () => {
         setCompiling(true);
         setOutput('');
         setCompilerError('');
-        setSubmissionResults(null);
+        setSubmissionResults(null); // Clear previous submission results for 'Run Code'
         setSubmissionError('');
         setOverallVerdict('');
         setAiRunCodeExplanation('');
@@ -129,7 +131,9 @@ const ProblemDetailPage = () => {
         }
 
         try {
-            const res = await API.post('/compile', {
+            // This API call goes to your compiler-ai-service, likely proxied through main-backend
+            // Ensure your main-backend's proxy or direct call points to the compiler-ai-service
+            const res = await API.post('/run', { // This endpoint is likely in your main-backend that forwards to compiler-ai-service
                 code,
                 language,
                 input: userInput,
@@ -150,8 +154,8 @@ const ProblemDetailPage = () => {
         setSubmitting(true);
         setSubmissionResults(null);
         setSubmissionError('');
-        setOutput('');
-        setCompilerError('');
+        setOutput(''); // Clear run code output as we are submitting
+        setCompilerError(''); // Clear run code errors
         setOverallVerdict('');
         setAiRunCodeExplanation('');
 
@@ -165,31 +169,56 @@ const ProblemDetailPage = () => {
             setSubmitting(false);
             return;
         }
-        if (!user || !user.id) { 
-            setSubmissionError('User information not available. Please log in again.'); 
-            setSubmitting(false);
-            return;
-        }
+        // User ID is handled by the backend's protect middleware (req.user._id)
+        // No need to send user.id from frontend
 
         try {
-            const res = await API.post('/submit', {
+            // STEP 1: Send code to the compiler-ai-service for evaluation against test cases
+            // Assuming your compiler-ai-service has an endpoint like '/submit-tests'
+            // or '/evaluate' that takes code, language, and test cases.
+            // THIS IS A CRITICAL ASSUMPTION. Verify your compiler-ai-service's endpoint.
+            const evaluationRes = await API.post('/submit', { // This endpoint is likely in your main-backend that forwards to compiler-ai-service
                 code,
                 language,
-                problemId: problem._id,
-                userId: user.id, 
+                problemId: problem._id, // Send problem ID for compiler service to get test cases
+                testCases: problem.testCases, // <-- Ensure problem.testCases is available here
+                problemTitle: problem.title,
+                problemDescription: problem.description,
+                timeLimit: problem.timeLimit // Pass if your problem model includes it
             });
 
-            setSubmissionResults(res.data.testResults);
-            setOverallVerdict(res.data.verdict || '');
+            const { verdict, testResults, output: compilerOutput, compilerOutput: actualCompilerOutput, aiExplanation } = evaluationRes.data;
 
-            if (res.data.aiExplanation) {
-                setCompilerError(res.data.aiExplanation);
+            setSubmissionResults(testResults);
+            setOverallVerdict(verdict || 'Unknown Verdict');
+            setAiRunCodeExplanation(aiExplanation || ''); // Display AI explanation if provided by compiler service
+
+            // STEP 2: Record the submission in your main-backend database
+            // This API call goes to your main-backend's new route: /api/problems/:id/submit
+            try {
+                await API.post(`/problems/${problem._id}/submit`, {
+                    code,
+                    language,
+                    verdict, // Use the verdict obtained from the compiler-ai-service
+                    output: compilerOutput, // Standard output from running code
+                    compilerOutput: actualCompilerOutput, // Errors/warnings from compilation itself
+                    testResults, // Detailed test case results
+                    // You might also want to send runtime and memory usage if your compiler-ai-service provides them
+                    // runtime: evaluationRes.data.runtime,
+                    // memory: evaluationRes.data.memory,
+                });
+                console.log('Submission successfully recorded in main-backend!');
+            } catch (recordErr) {
+                console.error('Error recording submission in main-backend:', recordErr.response?.data || recordErr);
+                setSubmissionError(prev => prev + '\nFailed to record submission in database.');
+                // You might still show the compiler results even if database save fails
             }
-        } catch (err) {
-            console.error('Error submitting code:', err.response?.data || err);
-            setSubmissionError(err.response?.data?.error || err.response?.data?.message || 'Failed to submit code. Please check your code or try again.');
-            setOverallVerdict(err.response?.data?.verdict || 'Submission Failed');
 
+        } catch (err) {
+            console.error('Error during code evaluation/submission:', err.response?.data || err);
+            const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to submit code. Please check your code or try again.';
+            setSubmissionError(errorMessage);
+            setOverallVerdict(err.response?.data?.verdict || 'Submission Failed'); // Display compiler verdict on error too
             if (err.response?.data.aiExplanation) {
                 setAiRunCodeExplanation(err.response?.data.aiExplanation);
             }
@@ -209,15 +238,19 @@ const ProblemDetailPage = () => {
         }
 
         try {
+            // This API call goes to your main-backend, which then forwards to your compiler-ai-service
             const res = await API.post(`/problems/${id}/hint`, {
                 problemDescription: problem.description,
                 problemTitle: problem.title,
                 userCode: code
             });
-            setAiHint(res.data.hint);
+            // The main-backend's /hint endpoint should return { hint: "..." } or similar
+            // based on how your compiler-ai-service's /hint endpoint is structured.
+            // Adjust `res.data.hint` if the structure is different (e.g., res.data.aiExplanation).
+            setAiHint(res.data.hint || res.data.aiExplanation || 'No hint available.');
         } catch (err) {
             console.error('Error getting AI hint:', err.response?.data || err.message);
-            setAiHint('Sorry, I could not generate a hint at this time. Please try again later.');
+            setAiHint(err.response?.data?.error || err.response?.data?.message || 'Sorry, I could not generate a hint at this time. Please try again later.');
         } finally {
             setHintLoading(false);
         }

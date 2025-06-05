@@ -1,0 +1,32 @@
+# docker-compose.yml (located in the 'backend' folder)
+version: '3.8'
+
+services:
+  main-backend:
+    build: ./main-backend
+    ports:
+      - "5000:5000" # Maps host port 5000 to container port 5000
+    environment:
+      # IMPORTANT: This URL now points to the correct port 5001
+      COMPILER_SERVICE_URL: http://compiler-ai-service:5001
+      # Add any other environment variables your main-backend needs (e.g., database URL)
+      # DATABASE_URL: your_database_url
+    depends_on:
+      - compiler-ai-service # Ensures main-backend starts after compiler-ai-service
+    volumes:
+      - ./main-backend:/app # For development: Mounts code for live updates
+      - /app/node_modules # Prevents host node_modules from overriding container's
+
+  compiler-ai-service:
+    build: ./compiler-ai-service
+    ports:
+      - "5001:5001" # Maps host port 5001 to container port 5001
+    # Optional: Add any specific environment variables for this service
+    # environment:
+      # NODE_ENV: production
+    volumes:
+      - ./compiler-ai-service:/app # For development: Mounts code for live updates
+      - /app/node_modules # Prevents host node_modules from overriding container's
+    # Optional: Add resource limits for the compiler service for safety
+    # cpus: "0.5" # limits to half a CPU core
+    # mem_limit: "512m" # limits memory to 512MB

@@ -2,27 +2,33 @@ const asyncHandler = require('express-async-handler');
 const { spawn } = require('child_process');
 const fs = require('fs-extra');
 const path = require('path');
-const Problem = require('../models/Problem');
-const Submission = require('../models/Submission');
-const { getAIResponse } = require('../utils/geminiService'); 
+
+// <-- IMPORTANT: These imports are now commented out.
+// The compiler-ai-service should not directly access the database models.
+// The main-backend will handle all database interactions (fetching problems, saving submissions).
+// const Problem = require('../main-backend/models/Problem');
+// const Submission = require('../main-backend/models/Submission');
+
+// <-- MODIFIED: Adjusted path for geminiService.
+// It's now in the same directory, so './geminiService'.
+const { getAIResponse } = require('./geminiService');
 
 const baseTempDir = path.join(__dirname, 'temp_code');
 fs.ensureDirSync(baseTempDir);
-
 
 const languageConfigs = {
     javascript: {
         extension: 'js',
         command: 'node',
         args: (filepath) => [filepath],
-        compileCommand: null, 
+        compileCommand: null,
         compileArgs: () => [],
     },
     python: {
         extension: 'py',
         command: 'python',
         args: (filepath) => [filepath],
-        compileCommand: null, 
+        compileCommand: null,
         compileArgs: () => [],
     },
     java: {
@@ -34,14 +40,14 @@ const languageConfigs = {
     },
     cpp: {
         extension: 'cpp',
-        command: './a.out', 
+        command: './a.out',
         args: () => [],
         compileCommand: 'g++',
         compileArgs: (filepath, tempSubDirPath, filenameWithoutExt) => [filepath, '-o', path.join(tempSubDirPath, filenameWithoutExt)],
     },
     c: {
         extension: 'c',
-        command: './a.out', 
+        command: './a.out',
         args: () => [],
         compileCommand: 'gcc',
         compileArgs: (filepath, tempSubDirPath, filenameWithoutExt) => [filepath, '-o', path.join(tempSubDirPath, filenameWithoutExt)],
@@ -69,9 +75,9 @@ const executeCommand = (command, args, input, options) => {
         });
 
         let timeoutId = setTimeout(() => {
-            child.kill('SIGTERM'); 
+            child.kill('SIGTERM');
             reject(new Error('Time Limit Exceeded'));
-        }, options.timeout || 5000); 
+        }, options.timeout || 5000);
 
         child.on('close', (code) => {
             clearTimeout(timeoutId);
@@ -92,6 +98,7 @@ const executeCommand = (command, args, input, options) => {
 };
 
 
+// runCode should still work largely the same, as it doesn't involve database interaction
 const runCode = asyncHandler(async (req, res) => {
     const { code, language, input = '' } = req.body;
 
@@ -105,7 +112,9 @@ const runCode = asyncHandler(async (req, res) => {
     }
 
     const config = languageConfigs[language];
-    const uniqueDirName = `${req.user._id}-${Date.now()}`;
+    // req.user._id is not available in this service, so we'll use a generic timestamp for unique dir
+    // const uniqueDirName = `${req.user._id}-${Date.now()}`; // <-- COMMENTED OUT
+    const uniqueDirName = `run-${Date.now()}`; // <-- NEW: Use a generic unique name
     const tempSubDirPath = path.join(baseTempDir, uniqueDirName);
 
     await fs.ensureDir(tempSubDirPath);
@@ -124,7 +133,7 @@ const runCode = asyncHandler(async (req, res) => {
 
     let compilationError = '';
     let executionOutput = '';
-    let aiExplanation = ''; 
+    let aiExplanation = '';
 
     try {
         await fs.writeFile(filepath, code);
@@ -132,11 +141,10 @@ const runCode = asyncHandler(async (req, res) => {
             console.log(`[RunCode] Compiling ${language} code in ${tempSubDirPath}...`);
             let compileArgs;
             if (language === 'java') {
-                compileArgs = config.compileArgs(tempSubDirPath); 
+                compileArgs = config.compileArgs(tempSubDirPath);
             } else {
                 compileArgs = config.compileArgs(filepath, tempSubDirPath, filenameWithoutExt);
             }
-
             try {
                 const { stderr: compileStderr } = await executeCommand(config.compileCommand, compileArgs, null, { timeout: 10000, cwd: tempSubDirPath });
                 if (compileStderr) {
@@ -144,27 +152,27 @@ const runCode = asyncHandler(async (req, res) => {
                     if (compileStderr.toLowerCase().includes('error:') || compileStderr.toLowerCase().includes('fatal error')) {
                         console.error('[RunCode] Compilation failed:', compilationError);
                         const prompt = `I encountered a compilation error in a ${language} program. Please explain the following error and suggest potential fixes.
-                        
+
                         Code:\n\`\`\`${language}\n${code}\n\`\`\`
-                        
+
                         Compilation Error:\n\`\`\`\n${compilationError}\n\`\`\`
-                        
+
                         Provide concise explanation and actionable steps.`;
                         aiExplanation = await getAIResponse(prompt);
-                        return res.status(400).json({ error: compilationError, aiExplanation }); 
+                        return res.status(400).json({ error: compilationError, aiExplanation });
                     }
                 }
             } catch (err) {
                 console.error('[RunCode] Compilation process failed to start or errored:', err.message);
-    
+
                 const prompt = `I encountered an issue starting the compiler for a ${language} program, or the compilation process itself failed. The error message is: "${err.message}".
-                
+
                 Code:\n\`\`\`${language}\n${code}\n\`\`\`
-                
+
                 Please explain what might be causing this compiler setup/process error and suggest troubleshooting steps.`;
                 aiExplanation = await getAIResponse(prompt);
-            
-                return res.status(400).json({ error: `Compilation Failed: ${err.message}`, aiExplanation }); 
+
+                return res.status(400).json({ error: `Compilation Failed: ${err.message}`, aiExplanation });
             }
         }
 
@@ -185,23 +193,23 @@ const runCode = asyncHandler(async (req, res) => {
             commandToRun,
             executionArgs,
             input,
-            { timeout: 2000, cwd: executionCwd } 
+            { timeout: 2000, cwd: executionCwd }
         );
 
         executionOutput = runStdout.trim();
 
         if (runStderr) {
             executionOutput = `${executionOutput}\n\nRuntime Warnings/Errors:\n${runStderr.trim()}`;
-            
+
             if (runStderr.toLowerCase().includes('error:') || runStderr.toLowerCase().includes('exception') || runStderr.toLowerCase().includes('traceback')) {
                 const prompt = `I encountered a runtime error/warning in a ${language} program. Please explain the following output and suggest potential fixes.
-                
+
                 Code:\n\`\`\`${language}\n${code}\n\`\`\`
-                
+
                 Input:\n\`\`\`\n${input}\n\`\`\`
-                
+
                 Runtime Output (including errors/warnings):\n\`\`\`\n${runStderr.trim()}\n\`\`\`
-                
+
                 Provide concise explanation and actionable steps.`;
                 aiExplanation = await getAIResponse(prompt);
             }
@@ -211,7 +219,7 @@ const runCode = asyncHandler(async (req, res) => {
             executionOutput = `${compilationError}\n\n${executionOutput}`;
         }
 
-        res.status(200).json({ output: executionOutput, aiExplanation }); 
+        res.status(200).json({ output: executionOutput, aiExplanation });
 
     } catch (executionError) {
         console.error(`[RunCode] Error during ${language} execution:`, executionError.message);
@@ -220,17 +228,17 @@ const runCode = asyncHandler(async (req, res) => {
             errorToReturn = `${compilationError}\n\n${errorToReturn}`;
         }
         const prompt = `I encountered a runtime error during the execution of a ${language} program. Please explain the following error and suggest potential fixes.
-        
+
         Code:\n\`\`\`${language}\n${code}\n\`\`\`
-        
+
         Input:\n\`\`\`\n${input}\n\`\`\`
-        
+
         Error message:\n\`\`\`\n${executionError.message}\n\`\`\`
-        
+
         Provide concise explanation and actionable steps.`;
         aiExplanation = await getAIResponse(prompt);
 
-        res.status(500).json({ error: errorToReturn, aiExplanation }); 
+        res.status(500).json({ error: errorToReturn, aiExplanation });
     } finally {
         try {
             await fs.remove(tempSubDirPath);
@@ -242,9 +250,13 @@ const runCode = asyncHandler(async (req, res) => {
 });
 
 
+// <-- IMPORTANT MODIFICATION FOR submitCode -->
+// This function will now receive problem details and user/submission IDs
+// from the main-backend. It will return the results back to main-backend,
+// which will then update the database.
 const submitCode = asyncHandler(async (req, res) => {
-    const { code, language, problemId } = req.body;
-    const userId = req.user._id; 
+    // These values are now expected to be sent from the main-backend
+    const { code, language, problemId, testCases, userId, submissionId, problemTitle, problemDescription } = req.body; // <-- MODIFIED: Added testCases and other problem details
 
     if (!code) {
         res.status(400);
@@ -254,56 +266,55 @@ const submitCode = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error('Unsupported language selected.');
     }
-    if (!problemId) {
+    if (!problemId) { // problemId is still useful for context in AI explanations
         res.status(400);
         throw new Error('Problem ID is required for submission.');
     }
+    // No need to fetch problem or submission from DB here
+    // const problem = await Problem.findById(problemId); // <-- COMMENTED OUT
+    // if (!problem) { // <-- COMMENTED OUT
+    //     res.status(404); // <-- COMMENTED OUT
+    //     throw new Error('Problem not found.'); // <-- COMMENTED OUT
+    // } // <-- COMMENTED OUT
 
-    const problem = await Problem.findById(problemId);
-    if (!problem) {
-        res.status(404);
-        throw new Error('Problem not found.');
-    }
-
-    const testCases = problem.testCases || [];
-    if (testCases.length === 0) {
-        const newSubmission = new Submission({
-            user: userId,
-            problem: problemId,
-            code: code,
-            language: language,
-            verdict: 'No Test Cases', 
-            output: 'No test cases defined for this problem yet.',
-            submittedAt: new Date(),
+    // Use the testCases passed from the main-backend
+    if (!testCases || testCases.length === 0) { // <-- MODIFIED
+        console.warn(`[SubmitCode] No test cases provided for problem ID: ${problemId}.`);
+        return res.status(200).json({
             testResults: [],
+            message: 'No test cases defined for this problem or provided.',
+            verdict: 'No Test Cases',
+            // submissionId: newSubmission._id // No submission ID from this service
         });
-        await newSubmission.save();
-        console.warn(`[SubmitCode] No test cases defined for problem ID: ${problemId}. Submission recorded.`);
-        return res.status(200).json({ testResults: [], message: 'No test cases defined for this problem yet.', verdict: 'No Test Cases', submissionId: newSubmission._id });
     }
 
-    const executionTimeLimit = (typeof problem.timeLimit === 'number' && problem.timeLimit > 0) ? problem.timeLimit : 2000;
+    // Use problem.timeLimit if provided, otherwise default.
+    // Ensure problem.timeLimit is also sent from main-backend.
+    const executionTimeLimit = (typeof req.body.timeLimit === 'number' && req.body.timeLimit > 0) ? req.body.timeLimit : 2000; // <-- MODIFIED
 
     const config = languageConfigs[language];
-    const uniqueDirName = `${req.user._id}-${Date.now()}`;
+    // req.user._id is not available, use userId passed from main-backend
+    // const uniqueDirName = `${req.user._id}-${Date.now()}`; // <-- COMMENTED OUT
+    const uniqueDirName = `${userId}-${Date.now()}`; // <-- NEW: Use userId from req.body
     const tempSubDirPath = path.join(baseTempDir, uniqueDirName);
 
-    let newSubmission;
+    // newSubmission object is no longer needed here, results will be returned
+    // let newSubmission; // <-- COMMENTED OUT
 
     try {
-        newSubmission = new Submission({
-            user: userId,
-            problem: problemId,
-            code: code,
-            language: language,
-            verdict: 'Pending', 
-            submittedAt: new Date(),
-            testResults: [], 
-            output: '',
-            compilerOutput: '',
-        });
-        await newSubmission.save(); 
-        console.log(`[SubmitCode] Initial submission saved with ID: ${newSubmission._id}`);
+        // newSubmission = new Submission({ // <-- COMMENTED OUT
+        //     user: userId, // <-- COMMENTED OUT
+        //     problem: problemId, // <-- COMMENTED OUT
+        //     code: code, // <-- COMMENTED OUT
+        //     language: language, // <-- COMMENTED OUT
+        //     verdict: 'Pending', // <-- COMMENTED OUT
+        //     submittedAt: new Date(), // <-- COMMENTED OUT
+        //     testResults: [], // <-- COMMENTED OUT
+        //     output: '', // <-- COMMENTED OUT
+        //     compilerOutput: '', // <-- COMMENTED OUT
+        // }); // <-- COMMENTED OUT
+        // await newSubmission.save(); // <-- COMMENTED OUT
+        // console.log(`[SubmitCode] Initial submission saved with ID: ${newSubmission._id}`); // <-- COMMENTED OUT
 
         await fs.ensureDir(tempSubDirPath);
 
@@ -321,8 +332,8 @@ const submitCode = asyncHandler(async (req, res) => {
 
         const testResults = [];
         let overallVerdict = 'Accepted';
-        let compilationAIExplanation = ''; 
-        let finalCompilerOutput = ''; 
+        let compilationAIExplanation = '';
+        let finalCompilerOutput = '';
 
         try {
             await fs.writeFile(filepath, code);
@@ -332,7 +343,7 @@ const submitCode = asyncHandler(async (req, res) => {
                 console.log(`[SubmitCode] Compiling ${language} code in ${tempSubDirPath}...`);
                 let compileArgs;
                 if (language === 'java') {
-                    compileArgs = config.compileArgs(tempSubDirPath); 
+                    compileArgs = config.compileArgs(tempSubDirPath);
                 } else {
                     compileArgs = config.compileArgs(filepath, tempSubDirPath, filenameWithoutExt);
                 }
@@ -341,47 +352,47 @@ const submitCode = asyncHandler(async (req, res) => {
                     const { stderr: compileStderr } = await executeCommand(config.compileCommand, compileArgs, null, { timeout: 3000, cwd: tempSubDirPath });
                     if (compileStderr) {
                         const compilationError = `Compilation Warnings/Diagnostics:\n${compileStderr}`;
-                        finalCompilerOutput = compilationError; 
+                        finalCompilerOutput = compilationError;
                         if (compileStderr.toLowerCase().includes('error:') || compileStderr.toLowerCase().includes('fatal error')) {
                             console.error('[SubmitCode] Compilation failed:', compilationError);
-                            
+
                             const prompt = `I encountered a compilation error in a ${language} program during a code submission. Please explain the following error and suggest potential fixes.
-                            
+
                             Code:\n\`\`\`${language}\n${code}\n\`\`\`
-                            
+
                             Compilation Error:\n\`\`\`\n${compilationError}\n\`\`\`
-                            
+
                             Provide concise explanation and actionable steps.`;
                             compilationAIExplanation = await getAIResponse(prompt);
 
                             testCases.forEach((_, index) => {
                                 testResults.push({
-                                    testCase: index + 1, 
+                                    testCase: index + 1,
                                     passed: false,
                                     message: `Compilation Error: ${compilationError}`,
-                                    input: 'N/A', 
-                                    expectedOutput: 'N/A', 
-                                    userOutput: 'N/A',    
+                                    input: 'N/A',
+                                    expectedOutput: 'N/A',
+                                    userOutput: 'N/A',
                                     aiExplanation: compilationAIExplanation,
                                 });
                             });
-                            overallVerdict = 'Compilation Error'; 
-                            newSubmission.verdict = overallVerdict;
-                            newSubmission.compilerOutput = finalCompilerOutput;
-                            newSubmission.testResults = testResults;
-                            newSubmission.output = `Compilation Error:\n${finalCompilerOutput}`;
-                            newSubmission.aiExplanation = compilationAIExplanation;
-                            await newSubmission.save();
-                            return res.status(200).json({ testResults, verdict: overallVerdict, submissionId: newSubmission._id });
+                            overallVerdict = 'Compilation Error';
+                            // newSubmission.verdict = overallVerdict; // <-- COMMENTED OUT
+                            // newSubmission.compilerOutput = finalCompilerOutput; // <-- COMMENTED OUT
+                            // newSubmission.testResults = testResults; // <-- COMMENTED OUT
+                            // newSubmission.output = `Compilation Error:\n${finalCompilerOutput}`; // <-- COMMENTED OUT
+                            // newSubmission.aiExplanation = compilationAIExplanation; // <-- COMMENTED OUT
+                            // await newSubmission.save(); // <-- COMMENTED OUT
+                            return res.status(200).json({ testResults, verdict: overallVerdict, compilerOutput: finalCompilerOutput, aiExplanation: compilationAIExplanation, submissionId: submissionId }); // <-- MODIFIED: Return data, not save
                         }
                     }
                 } catch (err) {
                     console.error('[SubmitCode] Compilation process failed to start or errored:', err.message);
-                    
+
                     const prompt = `I encountered an issue starting the compiler for a ${language} program, or the compilation process itself failed during a code submission. The error message is: "${err.message}".
-                    
+
                     Code:\n\`\`\`${language}\n${code}\n\`\`\`
-                    
+
                     Please explain what might be causing this compiler setup/process error and suggest troubleshooting steps.`;
                     compilationAIExplanation = await getAIResponse(prompt);
 
@@ -393,17 +404,17 @@ const submitCode = asyncHandler(async (req, res) => {
                             input: 'N/A',
                             expectedOutput: 'N/A',
                             userOutput: 'N/A',
-                            aiExplanation: compilationAIExplanation, 
+                            aiExplanation: compilationAIExplanation,
                         });
                     });
-                    overallVerdict = 'Compilation Error'; 
-                    newSubmission.verdict = overallVerdict;
-                    newSubmission.compilerOutput = finalCompilerOutput; 
-                    newSubmission.testResults = testResults;
-                    newSubmission.output = `Compilation Failed: ${err.message}`;
-                    newSubmission.aiExplanation = compilationAIExplanation;
-                    await newSubmission.save();
-                    return res.status(200).json({ testResults, verdict: overallVerdict, submissionId: newSubmission._id });
+                    overallVerdict = 'Compilation Error';
+                    // newSubmission.verdict = overallVerdict; // <-- COMMENTED OUT
+                    // newSubmission.compilerOutput = finalCompilerOutput; // <-- COMMENTED OUT
+                    // newSubmission.testResults = testResults; // <-- COMMENTED OUT
+                    // newSubmission.output = `Compilation Failed: ${err.message}`; // <-- COMMENTED OUT
+                    // newSubmission.aiExplanation = compilationAIExplanation; // <-- COMMENTED OUT
+                    // await newSubmission.save(); // <-- COMMENTED OUT
+                    return res.status(200).json({ testResults, verdict: overallVerdict, compilerOutput: finalCompilerOutput, aiExplanation: compilationAIExplanation, submissionId: submissionId }); // <-- MODIFIED: Return data, not save
                 }
             }
 
@@ -412,7 +423,7 @@ const submitCode = asyncHandler(async (req, res) => {
                 let userOutput = '';
                 let message = '';
                 let passed = false;
-                let aiExplanationForTestCase = ''; 
+                let aiExplanationForTestCase = '';
 
                 console.log(`[SubmitCode] Executing test case ${i + 1} for ${language} in ${tempSubDirPath}...`);
                 let commandToRun;
@@ -432,7 +443,7 @@ const submitCode = asyncHandler(async (req, res) => {
                         commandToRun,
                         executionArgs,
                         testCase.input,
-                        { timeout: executionTimeLimit, cwd: executionCwd } 
+                        { timeout: executionTimeLimit, cwd: executionCwd }
                     );
 
                     userOutput = stdout.trim();
@@ -444,22 +455,22 @@ const submitCode = asyncHandler(async (req, res) => {
                     } else {
                         passed = false;
                         message = 'Wrong Answer';
-                        if (overallVerdict === 'Accepted') { 
+                        if (overallVerdict === 'Accepted') {
                             overallVerdict = 'Wrong Answer';
                         }
-                        const problemDescription = problem.description; 
-                        const prompt = `Your code for a problem called "${problem.title}" (Description: ${problem.description}) failed a test case.
-                        
-                        Problem Description: ${problem.description}
-                        
+                        // Use problemTitle and problemDescription from req.body
+                        const prompt = `Your code for a problem called "${problemTitle}" (Description: ${problemDescription}) failed a test case.
+
+                        Problem Description: ${problemDescription}
+
                         Code:\n\`\`\`${language}\n${code}\n\`\`\`
-                        
+
                         Test Case Input:\n\`\`\`\n${testCase.input}\n\`\`\`
-                        
+
                         Expected Output:\n\`\`\`\n${expected}\n\`\`\`
-                        
+
                         Your Code's Output:\n\`\`\`\n${userOutput}\n\`\`\`
-                        
+
                         The test case failed with a "Wrong Answer". Please explain why the output might be incorrect and suggest common debugging strategies or potential logic errors to look for, specific to this problem and code if possible. Provide actionable advice.`;
                         aiExplanationForTestCase = await getAIResponse(prompt);
                     }
@@ -470,16 +481,16 @@ const submitCode = asyncHandler(async (req, res) => {
                         if ((stderr.toLowerCase().includes('error:') || stderr.toLowerCase().includes('exception') || stderr.toLowerCase().includes('traceback')) && overallVerdict === 'Accepted') {
                             overallVerdict = 'Runtime Error';
                         }
-                        
+
                         if (stderr.toLowerCase().includes('error:') || stderr.toLowerCase().includes('exception') || stderr.toLowerCase().includes('traceback')) {
-                            const prompt = `Your ${language} code for a problem called "${problem.title}" (Description: ${problem.description}) produced a runtime error/warning during a test case execution.
-                            
+                            const prompt = `Your ${language} code for a problem called "${problemTitle}" (Description: ${problemDescription}) produced a runtime error/warning during a test case execution.
+
                             Code:\n\`\`\`${language}\n${code}\n\`\`\`
-                            
+
                             Test Case Input:\n\`\`\`\n${testCase.input}\n\`\`\`
-                            
+
                             Runtime Error/Warnings Output:\n\`\`\`\n${stderr.trim()}\n\`\`\`
-                            
+
                             Please explain this runtime issue and suggest potential fixes. Provide actionable advice.`;
                             aiExplanationForTestCase = await getAIResponse(prompt);
                         }
@@ -487,32 +498,32 @@ const submitCode = asyncHandler(async (req, res) => {
 
                 } catch (execErr) {
                     console.error(`[SubmitCode] Test Case ${i + 1} execution failed:`, execErr.message);
-                    userOutput = execErr.message; 
+                    userOutput = execErr.message;
                     if (execErr.message.includes('Time Limit Exceeded')) {
                         message = 'Time Limit Exceeded';
                         overallVerdict = 'Time Limit Exceeded';
-                        
-                        const prompt = `Your ${language} code for a problem called "${problem.title}" (Description: ${problem.description}) exceeded the time limit (${executionTimeLimit / 1000} seconds) on the following test case.
-                        
+
+                        const prompt = `Your ${language} code for a problem called "${problemTitle}" (Description: ${problemDescription}) exceeded the time limit (${executionTimeLimit / 1000} seconds) on the following test case.
+
                         Code:\n\`\`\`${language}\n${code}\n\`\`\`
-                        
+
                         Test Case Input:\n\`\`\`\n${testCase.input}\n\`\`\`
-                        
+
                         Please explain common reasons for Time Limit Exceeded (TLE) in competitive programming for this problem type and suggest optimization strategies (e.g., algorithmic complexity, data structures) to resolve it.`;
                         aiExplanationForTestCase = await getAIResponse(prompt);
-                        
+
                     } else {
                         message = `Runtime Error: ${execErr.message}`;
                         if (overallVerdict !== 'Time Limit Exceeded') {
                             overallVerdict = 'Runtime Error';
                         }
-                        
-                        const prompt = `Your ${language} code for a problem called "${problem.title}" (Description: ${problem.description}) failed with a runtime error during a test case execution. The error message is: "${execErr.message}".
-                        
+
+                        const prompt = `Your ${language} code for a problem called "${problemTitle}" (Description: ${problemDescription}) failed with a runtime error during a test case execution. The error message is: "${execErr.message}".
+
                         Code:\n\`\`\`${language}\n${code}\n\`\`\`
-                        
+
                         Test Case Input:\n\`\`\`\n${testCase.input}\n\`\`\`
-                        
+
                         Please explain this runtime error and suggest potential fixes. Provide actionable advice.`;
                         aiExplanationForTestCase = await getAIResponse(prompt);
                     }
@@ -523,10 +534,10 @@ const submitCode = asyncHandler(async (req, res) => {
                     testCase: i + 1,
                     passed: passed,
                     message: message,
-                    input: testCase.input, 
+                    input: testCase.input,
                     expectedOutput: testCase.expectedOutput,
                     userOutput: userOutput,
-                    aiExplanation: aiExplanationForTestCase, 
+                    aiExplanation: aiExplanationForTestCase,
                 });
 
                 if (overallVerdict !== 'Accepted') {
@@ -534,10 +545,11 @@ const submitCode = asyncHandler(async (req, res) => {
                 }
             }
 
-            newSubmission.verdict = overallVerdict;
-            newSubmission.testResults = testResults;
-            newSubmission.compilerOutput = finalCompilerOutput; 
-            
+            // newSubmission.verdict = overallVerdict; // <-- COMMENTED OUT
+            // newSubmission.testResults = testResults; // <-- COMMENTED OUT
+            // newSubmission.compilerOutput = finalCompilerOutput; // <-- COMMENTED OUT
+
+            let finalOutputForSubmission = '';
             if (overallVerdict !== 'Accepted') {
                 const combinedOutput = testResults.map(tr => {
                     let output = `Test Case ${tr.testCase}: ${tr.message}`;
@@ -546,60 +558,82 @@ const submitCode = asyncHandler(async (req, res) => {
                     }
                     return output;
                 }).join('\n\n');
-                newSubmission.output = combinedOutput;
+                finalOutputForSubmission = combinedOutput;
             } else {
-                newSubmission.output = 'All test cases passed.';
+                finalOutputForSubmission = 'All test cases passed.';
             }
+            // newSubmission.output = finalOutputForSubmission; // <-- COMMENTED OUT
 
+            let finalAIExplanation = '';
             if (overallVerdict === 'Wrong Answer' && !testResults.some(tr => tr.aiExplanation)) {
-                 const prompt = `Your submission for problem "${problem.title}" (Description: ${problem.description}) resulted in a "${overallVerdict}". Please provide a general explanation of why this verdict might occur for this problem type and suggest general debugging steps.
-                 
-                 Code:\n\`\`\`${language}\n${code}\n\`\`\`
-                 
-                 Test Results:\n\`\`\`\n${JSON.stringify(testResults, null, 2)}\n\`\`\`
-                 `;
-                 newSubmission.aiExplanation = await getAIResponse(prompt);
+                const prompt = `Your submission for problem "${problemTitle}" (Description: ${problemDescription}) resulted in a "${overallVerdict}". Please provide a general explanation of why this verdict might occur for this problem type and suggest general debugging steps.
+
+                Code:\n\`\`\`${language}\n${code}\n\`\`\`
+
+                Test Results:\n\`\`\`\n${JSON.stringify(testResults, null, 2)}\n\`\`\`
+                `;
+                finalAIExplanation = await getAIResponse(prompt);
             } else if (compilationAIExplanation && overallVerdict === 'Compilation Error') {
-                newSubmission.aiExplanation = compilationAIExplanation; 
+                finalAIExplanation = compilationAIExplanation;
+            } else if (testResults.some(tr => tr.aiExplanation)) {
+                // If individual test cases have AI explanations, combine them or pick the most relevant
+                finalAIExplanation = testResults.filter(tr => tr.aiExplanation).map(tr => `Test Case ${tr.testCase} explanation:\n${tr.aiExplanation}`).join('\n\n---\n\n');
             }
 
-            await newSubmission.save(); 
-            console.log(`[SubmitCode] Final verdict '${overallVerdict}' saved for submission ID: ${newSubmission._id}`);
 
-            res.status(200).json({ testResults, verdict: overallVerdict, submissionId: newSubmission._id });
+            // newSubmission.aiExplanation = finalAIExplanation; // <-- COMMENTED OUT
+            // await newSubmission.save(); // <-- COMMENTED OUT
+            // console.log(`[SubmitCode] Final verdict '${overallVerdict}' saved for submission ID: ${newSubmission._id}`); // <-- COMMENTED OUT
 
-        } catch (overallJudgingError) { 
-            console.error(`[SubmitCode] Error during judging process for submission ID ${newSubmission._id}:`, overallJudgingError.message);
+            // <-- IMPORTANT: Return the results to the main-backend
+            res.status(200).json({
+                verdict: overallVerdict,
+                testResults: testResults,
+                compilerOutput: finalCompilerOutput,
+                output: finalOutputForSubmission,
+                aiExplanation: finalAIExplanation,
+                submissionId: submissionId // Pass back the original submissionId if provided
+            });
+
+        } catch (overallJudgingError) {
+            console.error(`[SubmitCode] Error during judging process for submission ID ${submissionId}:`, overallJudgingError.message); // <-- MODIFIED
             let submissionOverallAIExplanation = '';
-            const prompt = `An unexpected error occurred during the overall code submission judging process for a ${language} program. The error message is: "${overallJudgingError.message}".
-            
+            const prompt = `An unexpected error occurred during the overall code submission judging process for a ${language} program for problem "${problemTitle}". The error message is: "${overallJudgingError.message}".
+
             Code:\n\`\`\`${language}\n${code}\n\`\`\`
-            
+
             Please provide some general troubleshooting steps for an unexpected judging error.`;
             submissionOverallAIExplanation = await getAIResponse(prompt);
 
-            if (newSubmission && newSubmission._id) {
-                newSubmission.verdict = 'Submission Failed';
-                newSubmission.output = `An unexpected internal error occurred during judging: ${overallJudgingError.message}`;
-                newSubmission.aiExplanation = submissionOverallAIExplanation;
-                await newSubmission.save();
-                console.log(`[SubmitCode] Submission ID ${newSubmission._id} updated to 'Submission Failed' due to overall judging error.`);
-            }
+            // No database save here, return error
+            // if (newSubmission && newSubmission._id) { // <-- COMMENTED OUT
+            //     newSubmission.verdict = 'Submission Failed'; // <-- COMMENTED OUT
+            //     newSubmission.output = `An unexpected internal error occurred during judging: ${overallJudgingError.message}`; // <-- COMMENTED OUT
+            //     newSubmission.aiExplanation = submissionOverallAIExplanation; // <-- COMMENTED OUT
+            //     await newSubmission.save(); // <-- COMMENTED OUT
+            //     console.log(`[SubmitCode] Submission ID ${newSubmission._id} updated to 'Submission Failed' due to overall judging error.`); // <-- COMMENTED OUT
+            // }
 
+            // <-- MODIFIED: Return the error to the main-backend
             res.status(500).json({
                 error: 'An unexpected error occurred during submission judging.',
                 verdict: 'Submission Failed',
                 aiExplanation: submissionOverallAIExplanation,
-                submissionId: newSubmission ? newSubmission._id : null 
+                submissionId: submissionId // Pass back the original submissionId if provided
             });
         }
 
-    } catch (initialError) { 
-        console.error(`[SubmitCode] Error before initial submission save (e.g., problem not found):`, initialError.message);
-        res.status(500).json({ message: 'Server error during submission setup.', error: initialError.message });
+    } catch (initialError) {
+        // This catch block handles errors even before creating newSubmission (e.g., problem not found, or initial ensureDir fails)
+        console.error(`[SubmitCode] Error before initial setup (e.g., directory creation):`, initialError.message); // <-- MODIFIED
+        res.status(500).json({
+            message: 'Server error during submission setup.',
+            error: initialError.message,
+            submissionId: submissionId // Pass back original submissionId if available
+        });
     } finally {
         try {
-            if (tempSubDirPath) { 
+            if (tempSubDirPath) {
                 await fs.remove(tempSubDirPath);
                 console.log(`[SubmitCode] Cleaned up directory: ${tempSubDirPath}`);
             }

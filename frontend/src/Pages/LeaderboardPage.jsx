@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import api from '../utils/api'; 
+import api from '../utils/api';
 
 const LeaderboardPage = () => {
     const { user, token } = useAuth();
@@ -10,15 +10,18 @@ const LeaderboardPage = () => {
 
     useEffect(() => {
         const fetchLeaderboard = async () => {
-            if (!token) { 
+            if (!token) {
                 setLoading(false);
                 setError('Please log in to view the leaderboard.');
                 return;
             }
 
             try {
-                const res = await api.get('/users/leaderboard'); 
-                setLeaderboard(res.data);
+                const res = await api.get('/users/leaderboard');
+                console.log("API Response Data:", res.data);
+                // Ensure data is always an array, though it already was from previous logs
+                setLeaderboard(Array.isArray(res.data) ? res.data : [res.data]);
+                console.log("Leaderboard state after setting:", Array.isArray(res.data) ? res.data : [res.data]);
             } catch (err) {
                 console.error('Error fetching leaderboard:', err);
                 setError('Failed to load leaderboard data.');
@@ -29,6 +32,17 @@ const LeaderboardPage = () => {
         fetchLeaderboard();
     }, [token]);
 
+    // Keep these debug logs to monitor state
+    useEffect(() => {
+        console.log("Current Leaderboard State:", leaderboard);
+        console.log("Leaderboard length:", leaderboard.length);
+        if (leaderboard.length > 0) {
+            console.log("Leaderboard has data, should render table.");
+        } else {
+            console.log("Leaderboard is empty, showing 'No Rankings Yet'.");
+        }
+    }, [leaderboard]);
+   
     if (loading) {
         return (
             <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50">
@@ -94,6 +108,8 @@ const LeaderboardPage = () => {
                 </header>
 
                 <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                    {/* NEW LOGIC HERE: Always render the table structure IF NOT LOADING/ERROR */}
+                    {/* Then, inside the table's container, check if leaderboard is empty */}
                     {leaderboard.length === 0 ? (
                         <div className="text-center py-12">
                             <div className="text-6xl mb-4">📊</div>
