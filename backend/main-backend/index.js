@@ -18,7 +18,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: 'http://localhost:5173', // Adjust this if your frontend is deployed elsewhere, e.g., 'https://yourfrontend.com'
     credentials: true
 }));
 app.use(express.json());
@@ -31,6 +31,12 @@ const PORT = process.env.PORT || 5000;
 const COMPILER_AI_SERVICE_URL = process.env.COMPILER_AI_SERVICE_URL || 'http://localhost:5001';
 
 DBConnection();
+
+// === NEW: Route for the root path ===
+app.get('/', (req, res) => {
+  res.json({ message: "Welcome to the CodeTrialz Backend API! Please use specific API endpoints like /api/problems or /run." });
+});
+// =====================================
 
 // API Routes
 app.use('/api/users', userRoutes);
@@ -88,9 +94,33 @@ app.post('/api/run', protect, async (req, res, next) => { // Added `protect` mid
     }
 });
 
+// NEW: Proxy for /api/problems/:id/hint to the compiler-ai-service
+app.post('/api/problems/:id/hint', protect, async (req, res, next) => {
+    try {
+        const { problemDescription, problemTitle, userCode, language } = req.body;
+        const problemId = req.params.id; // Get problem ID from URL parameters
+
+        const response = await axios.post(`${COMPILER_AI_SERVICE_URL}/api/hint`, {
+            problemId, // Pass problemId if the AI service needs to fetch problem details itself
+            problemDescription,
+            problemTitle,
+            userCode,
+            language,
+            userId: req.user._id // Pass user ID for context/logging in AI service
+        });
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error('Error forwarding /api/problems/:id/hint request to compiler-ai-service:', error.message);
+        if (error.response) {
+            return res.status(error.response.status).json(error.response.data);
+        }
+        next(new Error('Failed to connect to compiler-ai-service for hint or unexpected error.'));
+    }
+});
+
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });

@@ -13,7 +13,7 @@ import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-java';
 import 'prismjs/components/prism-c';
 import 'prismjs/components/prism-cpp';
-import { getAIResponse } from '../utils/ai'; // <--- RESTORED THIS LINE!   
+import { getAIResponse } from '../utils/ai'; // <--- RESTORED THIS LINE!
 
 const ProblemDetailPage = () => {
     const { id } = useParams();
@@ -79,11 +79,11 @@ const ProblemDetailPage = () => {
     useEffect(() => {
         const fetchProblem = async () => {
             try {
-                const res = await API.get(`/problems/${id}`);
+                const res = await API.get(`/problems/${id}`); // CORRECTED LINE
                 setProblem(res.data);
                 setCode(initialCodeSnippets[language]);
             } catch (err) {
-                console.error(`Error fetching problem with ID ${id}:`, err.response?.data || err);
+                console.error(`Error fetching problem with ID ${id}:`, err.response?.data || err); // CORRECTED LINE
                 setProblemError(err.response?.data?.message || 'Failed to fetch problem details.');
             } finally {
                 setProblemLoading(false);
@@ -103,13 +103,13 @@ const ProblemDetailPage = () => {
             setDeleteMessage('');
             setDeleteError('');
             try {
-                await API.delete(`/problems/${id}`);
+                await API.delete(`/problems/${id}`); // CORRECTED LINE
                 setDeleteMessage('Problem deleted successfully!');
                 setTimeout(() => {
                     navigate('/dashboard');
                 }, 1500);
             } catch (err) {
-                console.error('Error deleting problem:', err.response?.data || err);
+                console.error('Error deleting problem:', err.response?.data || err); // CORRECTED LINE
                 setDeleteError(err.response?.data?.message || 'Failed to delete problem. You might not have permission.');
             }
         }
@@ -196,7 +196,7 @@ const ProblemDetailPage = () => {
             // STEP 2: Record the submission in your main-backend database
             // This API call goes to your main-backend's new route: /api/problems/:id/submit
             try {
-                await API.post(`/problems/${problem._id}/submit`, {
+                await API.post(`/problems/${problem._id}/submit`, { // CORRECTED LINE
                     code,
                     language,
                     verdict, // Use the verdict obtained from the compiler-ai-service
@@ -239,14 +239,15 @@ const ProblemDetailPage = () => {
 
         try {
             // This API call goes to your main-backend, which then forwards to your compiler-ai-service
-            const res = await API.post(`/problems/${id}/hint`, {
+            const res = await API.post(`/problems/${id}/hint`, { // CORRECTED LINE
                 problemDescription: problem.description,
                 problemTitle: problem.title,
-                userCode: code
+                userCode: code,
+                language: language // <--- ADDED THIS LINE
             });
             // The main-backend's /hint endpoint should return { hint: "..." } or similar
             // based on how your compiler-ai-service's /hint endpoint is structured.
-            // Adjust `res.data.hint` if the structure is different (e.g., res.data.aiExplanation).
+            // Adjust res.data.hint if the structure is different (e.g., res.data.aiExplanation).
             setAiHint(res.data.hint || res.data.aiExplanation || 'No hint available.');
         } catch (err) {
             console.error('Error getting AI hint:', err.response?.data || err.message);
@@ -326,7 +327,7 @@ const ProblemDetailPage = () => {
                     {canEditOrDelete && (
                         <div className="flex space-x-4 mb-6">
                             <Link
-                                to={`/edit-problem/${problem._id}`}
+                                to={`/edit-problem/${problem._id}`} // CORRECTED LINE
                                 className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-md transition duration-300"
                             >
                                 Edit Problem
