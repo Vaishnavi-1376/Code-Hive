@@ -17,10 +17,30 @@ const { protect } = require('./middleware/authMiddleware');
 dotenv.config();
 const app = express();
 
+// --- MODIFIED START ---
+// Dynamically set CORS origin from an environment variable.
+// This allows you to configure allowed frontend URLs without changing code.
+const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [
+  'https://online-judge-fawn.vercel.app', // Your primary production frontend URL
+  'https://online-judge-e18v7je9i-kotapati-lakshmi-vaishnavis-projects.vercel.app', // Your specific preview URL
+  // Add 'http://localhost:3000' or similar if you test your frontend locally
+];
+
 app.use(cors({
-   origin: 'https://online-judge-e18v7je9i-kotapati-lakshmi-vaishnavis-projects.vercel.app', // Adjust this if your frontend is deployed elsewhere, e.g., 'https://yourfrontend.com'
-    credentials: true
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl requests, or same-origin)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}.`;
+      console.error(msg); // Log the blocked origin for debugging
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
 }));
+// --- MODIFIED END ---
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -28,7 +48,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const PORT = process.env.PORT || 5000;
 
 // NEW: Define the URL for your new compiler-ai-service
-const COMPILER_AI_SERVICE_URL = process.env.COMPILER_AI_SERVICE_URL || 'http://localhost:5001';
+// --- MODIFIED START ---
+const COMPILER_AI_SERVICE_URL = process.env.COMPILER_AI_SERVICE_URL || 'http://localhost:5001'; // Ensure this ENV variable is set on AWS!
+// --- MODIFIED END ---
 
 DBConnection();
 
