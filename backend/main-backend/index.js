@@ -18,7 +18,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-    origin: 'https://online-judge-kotapati-lakshmi-vaishnavis-projects.vercel.app/', // Adjust this if your frontend is deployed elsewhere, e.g., 'https://yourfrontend.com'
+   origin: 'https://online-judge-e18v7je9i-kotapati-lakshmi-vaishnavis-projects.vercel.app', // Adjust this if your frontend is deployed elsewhere, e.g., 'https://yourfrontend.com'
     credentials: true
 }));
 app.use(express.json());
