@@ -129,7 +129,7 @@ Ensure you have the following installed on your system:
  git clone [https://github.com/Vaishnavi-1376/Code-Hive.git](https://github.com/Vaishnavi-1376/Code-Hive.git)
  cd Code-Hive
 
-### 2. Environment Variables
+## 2. Environment Variables
 
 Create .env files in your backend/main-backend/ and backend/compiler-ai-service/ directories. Populate them with your respective API keys and credentials.
 
