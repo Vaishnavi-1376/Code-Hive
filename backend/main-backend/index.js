@@ -14,6 +14,7 @@ const app = express();
 const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [
   'https://online-judge-fawn.vercel.app', 
   'https://online-judge-e18v7je9i-kotapati-lakshmi-vaishnavis-projects.vercel.app', 
+  'https://mycodehive.vercel.app/'
 ];
 
 app.use(cors({
