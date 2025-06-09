@@ -162,7 +162,6 @@ cd backend
 node index.js
 
 ```
-
 cd frontend
 start the frontend 
 
