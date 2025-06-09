@@ -17,6 +17,7 @@ const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split('
   'https://mycodehive.vercel.app/'
 ];
 
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
