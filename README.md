@@ -167,14 +167,9 @@ start the frontend
 
 ```
 cd frontend
-
-start the frontend 
-
-```
-
 npm run dev
 
-
+```
 
 
 ## License
