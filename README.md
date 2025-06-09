@@ -131,45 +131,45 @@ Ensure you have the following installed on your system:
 
 ### 2. Environment Variables
 
- Create .env files in your backend/main-backend/ and backend/compiler-ai-service/ directories. Populate them with your respective API keys and credentials.
+Create .env files in your backend/main-backend/ and backend/compiler-ai-service/ directories. Populate them with your respective API keys and credentials.
 
- ```
- PORT=YOUR_BACKEND_PORT
- MONGO_URI=YOUR_MONGODB_CONNECTION_STRING
- SECRET_KEY=YOUR_JWT_SECRET_KEY
- EMAIL_USER=YOUR_EMAIL_FOR_NODEMAILER
- EMAIL_PASS=YOUR_EMAIL_PASSWORD_FOR_NODEMAILER
- GEMINI_API_KEY=YOUR_GOOGLE_GEMINI_API_KEY
- FRONTEND_VERCEL_URL=YOUR_FRONTEND_VERCEL_DEPLOYMENT_URL
+```
+PORT=YOUR_BACKEND_PORT
+MONGO_URI=YOUR_MONGODB_CONNECTION_STRING
+SECRET_KEY=YOUR_JWT_SECRET_KEY
+EMAIL_USER=YOUR_EMAIL_FOR_NODEMAILER
+EMAIL_PASS=YOUR_EMAIL_PASSWORD_FOR_NODEMAILER
+GEMINI_API_KEY=YOUR_GOOGLE_GEMINI_API_KEY
+FRONTEND_VERCEL_URL=YOUR_FRONTEND_VERCEL_DEPLOYMENT_URL
 
- ```
+```
 
- ```
- GEMINI_API_KEY=YOUR_GOOGLE_GEMINI_API_KEY
- COMPILER_SERVICE_PORT=YOUR_COMPILER_SERVICE_PORT
+```
+GEMINI_API_KEY=YOUR_GOOGLE_GEMINI_API_KEY
+COMPILER_SERVICE_PORT=YOUR_COMPILER_SERVICE_PORT
 
- ```
+```
 
 ## Install Dependencies & Start Service
 
- First, install dependencies for each part of the application. Navigate into the frontend/, backend/main-backend/, and backend/compiler-ai-service/ directories one by one, and run npm install in each.
+First, install dependencies for each part of the application. Navigate into the frontend/, backend/main-backend/, and backend/compiler-ai-service/ directories one by one, and run npm install in each.
 
- start the backend services
+start the backend services
 
- ```
- cd backend
- node index.js
+```
+cd backend
+node index.js
 
- ```
+```
 
- cd frontend
- start the frontend 
+cd frontend
+start the frontend 
 
- ```
+```
 
- npm run dev
+npm run dev
 
- ```
+```
 
 
 ## License
