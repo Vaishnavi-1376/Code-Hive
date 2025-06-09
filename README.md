@@ -123,11 +123,12 @@ Ensure you have the following installed on your system:
 
  Follow these steps to set up CodeHive locally on your machine:
 
-### 1. Clone the Repository
+## 1. Clone the Repository
 
  ```bash
  git clone [https://github.com/Vaishnavi-1376/Code-Hive.git](https://github.com/Vaishnavi-1376/Code-Hive.git)
  cd Code-Hive
+ ```
 
 ## 2. Environment Variables
 
