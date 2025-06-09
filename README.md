@@ -48,6 +48,8 @@ Code-Hive/
 │
 └── README.md
 
+
+
 Detailed Project Description-
 
 CodeHive is a comprehensive online judge platform meticulously built using the MERN stack (MongoDB, Express.js, React, Node.js), with Vite for a blazing-fast frontend development experience. It's designed to provide an interactive and intelligent environment for users to sharpen their coding skills and tackle algorithmic challenges.
@@ -55,6 +57,9 @@ CodeHive is a comprehensive online judge platform meticulously built using the M
 The platform features robust user authentication with secure sign-up and login functionalities. Once authenticated, users gain access to a personalized dashboard showcasing their progress, including the number of problems submitted, a competitive leaderboard, and a history of their latest submissions. The core of CodeHive lies in its "Explore Problems" section, where a wide array of coding questions are presented. Users can select a problem to view its description on the left, while simultaneously writing their code in a versatile integrated code editor on the right. The editor supports five popular programming languages: JavaScript, Python, Java, C++, and C, along with a dedicated area for user input.
 
 CodeHive provides instant feedback through its "Run" and "Submit" functionalities, where code is executed against test cases. A standout feature is its intelligent AI integration: for incorrect submissions, the AI provides detailed error explanations, helping users understand what went wrong. Users can also leverage the "Get AI Hint" button for personalized guidance, offering insights into their mistakes and suggestions for correction, fostering a deeper learning experience.
+
+
+
 
 Technologies Used-
 
@@ -66,6 +71,8 @@ React: A declarative, component-based JavaScript library for building user inter
 Vite: A next-generation frontend tooling that provides a significantly faster development experience.
 Tailwind CSS: A utility-first CSS framework for rapidly building custom designs.
 Axios: A promise-based HTTP client for making API requests from the browser.
+
+
 
 Backend (Main Service - main-backend)-
 
@@ -95,6 +102,8 @@ C++
 C
 (The Dockerfile for this service indicates the presence of openjdk17, python3, gcc, g++, make, which are crucial for running these languages.)
 
+
+
 External APIs-
 
 Google Gemini API (@google/generative-ai): Utilized for generating intelligent hints and providing detailed error explanations.
@@ -105,6 +114,9 @@ AWS EC2: For hosting the backend services (Main Backend and Compiler/AI Service)
 Docker: For containerizing both backend services, ensuring consistent environments.
 Docker Compose: For orchestrating multi-container Docker applications (used for local setup or single-host deployment).
 Alpine Linux: The lightweight base operating system for Docker images.
+
+
+
 
 Key Features-
 
@@ -120,6 +132,9 @@ AI-Powered Hint Generation: Get smart hints to guide users when they are stuck o
 Dynamic Leaderboard: Track and compare user performance across the platform.
 Submission History: Review past code submissions and their results.
 
+
+
+
 Installation-
 
 Prerequisites-
@@ -133,6 +148,8 @@ Setup & Run
 Clone Repository:
 git clone https://github.com/Vaishnavi-1376/Code-Hive.git
 cd Code-Hive
+
+
 
 Environment Variables-
 Create .env files in main-backend/ and compiler-ai-service/ with your respective API keys and credentials.
@@ -150,10 +167,16 @@ docker-compose up --build -d
 Finally, in a new terminal window, navigate to the directory and start the frontend development server:
 cd client && npm run dev
 
+
+
+
 License
 This project is licensed under the MIT License.
 
 See the LICENSE file in the repository for more details.
+
+
+
 
 Live Demo-
 Explore the live application deployed on Vercel:
