@@ -13,7 +13,7 @@ const Nav = () => {
   return (
     <nav className="bg-gradient-to-r from-indigo-600 to-purple-700 text-white px-6 py-5 flex justify-between items-center shadow-lg sticky top-0 z-50">
       <Link to="/" className="text-3xl font-extrabold tracking-tight text-white hover:text-blue-100 transition duration-300 ease-in-out">
-        Online Judge
+        Code Hive
       </Link>
 
       <div className="flex items-center space-x-6 text-lg"> 
