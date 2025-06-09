@@ -121,10 +121,66 @@ Ensure you have the following installed on your system:
 
 ## Installation
 
-Follow these steps to set up CodeHive locally on your machine:
+ Follow these steps to set up CodeHive locally on your machine:
 
 ### 1. Clone the Repository
 
-```bash
-git clone [https://github.com/Vaishnavi-1376/Code-Hive.git](https://github.com/Vaishnavi-1376/Code-Hive.git)
-cd Code-Hive
+ ```bash
+ git clone [https://github.com/Vaishnavi-1376/Code-Hive.git](https://github.com/Vaishnavi-1376/Code-Hive.git)
+ cd Code-Hive
+
+### 2. Environment Variables
+
+ Create .env files in your backend/main-backend/ and backend/compiler-ai-service/ directories. Populate them with your respective API keys and credentials.
+
+ ```
+ PORT=YOUR_BACKEND_PORT
+ MONGO_URI=YOUR_MONGODB_CONNECTION_STRING
+ SECRET_KEY=YOUR_JWT_SECRET_KEY
+ EMAIL_USER=YOUR_EMAIL_FOR_NODEMAILER
+ EMAIL_PASS=YOUR_EMAIL_PASSWORD_FOR_NODEMAILER
+ GEMINI_API_KEY=YOUR_GOOGLE_GEMINI_API_KEY
+ FRONTEND_VERCEL_URL=YOUR_FRONTEND_VERCEL_DEPLOYMENT_URL
+
+ ```
+
+ ```
+ GEMINI_API_KEY=YOUR_GOOGLE_GEMINI_API_KEY
+ COMPILER_SERVICE_PORT=YOUR_COMPILER_SERVICE_PORT
+
+ ```
+
+## Install Dependencies & Start Service
+
+ First, install dependencies for each part of the application. Navigate into the frontend/, backend/main-backend/, and backend/compiler-ai-service/ directories one by one, and run npm install in each.
+
+ start the backend services
+
+ ```
+ cd backend
+ node index.js
+
+ ```
+
+ cd frontend
+ start the frontend 
+
+ ```
+
+ npm run dev
+
+ ```
+
+
+## License
+
+ This project is licensed under the MIT License.
+
+ See the LICENSE file in the repository for more details.
+
+## Live Demo
+
+ Explore the live application deployed on Vercel:
+ https://mycodehive.vercel.app
+ 
+ 
