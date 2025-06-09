@@ -43,7 +43,7 @@ DBConnection();
 
 
 app.get('/', (req, res) => {
-  res.json({ message: "Welcome to the CodeTrialz Backend API! Please use specific API endpoints like /api/problems or /run." });
+  res.json({ message: "Welcome to the Code Hive Backend API! Please use specific API endpoints like /api/problems or /run." });
 });
 
 
