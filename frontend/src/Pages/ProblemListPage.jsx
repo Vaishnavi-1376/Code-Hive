@@ -36,8 +36,7 @@ const ProblemsListPage = () => {
     useEffect(() => {
         const fetchProblems = async () => {
             try {
-                // Use the API utility which should be configured with your EC2 backend URL
-                const res = await API.get('/problems'); // Changed from axios.get('http://localhost:5000/api/problems')
+                const res = await API.get('/problems'); 
                 setProblems(res.data);
                 setLoading(false);
             } catch (err) {
@@ -76,30 +75,26 @@ const ProblemsListPage = () => {
              <div className="absolute top-[60%] right-[15%] w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-2000"></div>
              <div className="absolute bottom-1/4 left-[35%] w-56 h-56 bg-pink-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-4000"></div>
 
-            <div className="relative z-10 max-w-4xl mx-auto"> {/* Adjusted max-width for a more typical list view */}
+            <div className="relative z-10 max-w-4xl mx-auto"> 
                 <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-12 text-center leading-tight tracking-tighter drop-shadow-sm">
                     <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-700 via-indigo-700 to-blue-700">
                         Explore Challenges
                     </span>
                 </h1>
 
-                {/* Changed from grid to a simple div for list-like appearance */}
                 <div className="bg-white rounded-xl shadow-lg border border-purple-100 divide-y divide-gray-200 overflow-hidden">
                     {problems.length > 0 ? (
                         problems.map((problem, index) => (
-                            // Each problem is now a Link acting as a row
                             <Link
                                 key={problem._id}
                                 to={`/problems/${problem._id}`}
                                 className="block p-4 sm:p-6 flex items-center justify-between transition-colors duration-200 hover:bg-gray-50"
-                                // Removed individual card animations and hover transforms
                             >
-                                {/* Left Section: Title and Tags */}
-                                <div className="flex flex-col flex-grow mr-4"> {/* Added margin-right for spacing */}
+                                <div className="flex flex-col flex-grow mr-4"> 
                                     <h2 className="text-lg font-semibold text-gray-800 hover:text-purple-700 transition-colors duration-200 leading-snug">
                                         {problem.title}
                                     </h2>
-                                    <div className="flex flex-wrap gap-2 mt-2"> {/* Added margin-top for spacing from title */}
+                                    <div className="flex flex-wrap gap-2 mt-2"> 
                                         {problem.tags && problem.tags.length > 0 && problem.tags.map((tag, tagIndex) => (
                                             <span
                                                 key={tagIndex}
@@ -111,8 +106,7 @@ const ProblemsListPage = () => {
                                     </div>
                                 </div>
 
-                                {/* Right Section: Difficulty Badge */}
-                                <div className="flex-shrink-0"> {/* Prevents badge from shrinking */}
+                                <div className="flex-shrink-0"> 
                                     {getDifficultyBadge(problem.difficulty)}
                                 </div>
                             </Link>

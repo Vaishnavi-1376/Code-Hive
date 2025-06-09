@@ -43,20 +43,14 @@ const registerUser = async (req, res) => {
             isVerified: false,
         });
 
-        // --- MODIFIED START ---
-        // Ensure this environment variable is set on your AWS backend!
-        // If it's not set, the process.env.FRONTEND_VERCEL_URL will be undefined,
-        // and a console error will help diagnose (or cause a server crash if not handled).
         const frontendBaseUrl = process.env.FRONTEND_VERCEL_URL;
 
         if (!frontendBaseUrl) {
             console.error("CRITICAL ERROR: FRONTEND_VERCEL_URL environment variable is not set on the backend!");
-            // This will throw an error and stop the function, preventing a bad email from being sent.
             throw new Error('Frontend URL not configured on the server.');
         }
 
         const verifyUrl = `${frontendBaseUrl}/verify/${verifyToken}`;
-        // --- MODIFIED END ---
 
         await sendEmail(email, 'Verify Your Email for Online Judge', `Please click this link to verify your email: ${verifyUrl}`);
         res.status(201).json({ message: 'User registered successfully! Check your email to verify your account.' });
@@ -66,7 +60,7 @@ const registerUser = async (req, res) => {
             const messages = Object.values(error.errors).map(val => val.message);
             return res.status(400).json({ message: messages.join(', ') });
         }
-        // Added a specific error message for missing frontend URL configuration
+    
         if (error.message === 'Frontend URL not configured on the server.') {
             return res.status(500).json({ message: 'Server configuration error: Frontend URL is missing.' });
         }

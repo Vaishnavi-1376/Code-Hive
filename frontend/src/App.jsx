@@ -16,7 +16,7 @@ import EditProblemPage from './Pages/EditProblemPage';
 import SubmissionsPage from './Pages/SubmissionsPage'; 
 import LeaderboardPage from './Pages/LeaderboardPage'; 
 import './App.css';
-//deploy frontend
+
 function App() {
   return (
     <Router>

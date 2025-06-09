@@ -2,15 +2,6 @@ const asyncHandler = require('express-async-handler');
 const { spawn } = require('child_process');
 const fs = require('fs-extra');
 const path = require('path');
-
-// <-- IMPORTANT: These imports are now commented out.
-// The compiler-ai-service should not directly access the database models.
-// The main-backend will handle all database interactions (fetching problems, saving submissions).
-// const Problem = require('../main-backend/models/Problem');
-// const Submission = require('../main-backend/models/Submission');
-
-// <-- MODIFIED: Adjusted path for geminiService.
-// It's now in the same directory, so './geminiService'.
 const { getAIResponse } = require('./geminiService');
 
 const baseTempDir = path.join(__dirname, 'temp_code');
@@ -97,8 +88,6 @@ const executeCommand = (command, args, input, options) => {
     });
 };
 
-
-// runCode should still work largely the same, as it doesn't involve database interaction
 const runCode = asyncHandler(async (req, res) => {
     const { code, language, input = '' } = req.body;
 
@@ -112,9 +101,7 @@ const runCode = asyncHandler(async (req, res) => {
     }
 
     const config = languageConfigs[language];
-    // req.user._id is not available in this service, so we'll use a generic timestamp for unique dir
-    // const uniqueDirName = `${req.user._id}-${Date.now()}`; // <-- COMMENTED OUT
-    const uniqueDirName = `run-${Date.now()}`; // <-- NEW: Use a generic unique name
+    const uniqueDirName = `run-${Date.now()}`; 
     const tempSubDirPath = path.join(baseTempDir, uniqueDirName);
 
     await fs.ensureDir(tempSubDirPath);
@@ -249,14 +236,8 @@ const runCode = asyncHandler(async (req, res) => {
     }
 });
 
-
-// <-- IMPORTANT MODIFICATION FOR submitCode -->
-// This function will now receive problem details and user/submission IDs
-// from the main-backend. It will return the results back to main-backend,
-// which will then update the database.
 const submitCode = asyncHandler(async (req, res) => {
-    // These values are now expected to be sent from the main-backend
-    const { code, language, problemId, testCases, userId, submissionId, problemTitle, problemDescription } = req.body; // <-- MODIFIED: Added testCases and other problem details
+    const { code, language, problemId, testCases, userId, submissionId, problemTitle, problemDescription } = req.body; 
 
     if (!code) {
         res.status(400);
@@ -266,56 +247,27 @@ const submitCode = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error('Unsupported language selected.');
     }
-    if (!problemId) { // problemId is still useful for context in AI explanations
+    if (!problemId) {
         res.status(400);
         throw new Error('Problem ID is required for submission.');
     }
-    // No need to fetch problem or submission from DB here
-    // const problem = await Problem.findById(problemId); // <-- COMMENTED OUT
-    // if (!problem) { // <-- COMMENTED OUT
-    //     res.status(404); // <-- COMMENTED OUT
-    //     throw new Error('Problem not found.'); // <-- COMMENTED OUT
-    // } // <-- COMMENTED OUT
 
-    // Use the testCases passed from the main-backend
-    if (!testCases || testCases.length === 0) { // <-- MODIFIED
+    if (!testCases || testCases.length === 0) {
         console.warn(`[SubmitCode] No test cases provided for problem ID: ${problemId}.`);
         return res.status(200).json({
             testResults: [],
             message: 'No test cases defined for this problem or provided.',
             verdict: 'No Test Cases',
-            // submissionId: newSubmission._id // No submission ID from this service
         });
     }
 
-    // Use problem.timeLimit if provided, otherwise default.
-    // Ensure problem.timeLimit is also sent from main-backend.
-    const executionTimeLimit = (typeof req.body.timeLimit === 'number' && req.body.timeLimit > 0) ? req.body.timeLimit : 2000; // <-- MODIFIED
+    const executionTimeLimit = (typeof req.body.timeLimit === 'number' && req.body.timeLimit > 0) ? req.body.timeLimit : 2000;
 
     const config = languageConfigs[language];
-    // req.user._id is not available, use userId passed from main-backend
-    // const uniqueDirName = `${req.user._id}-${Date.now()}`; // <-- COMMENTED OUT
-    const uniqueDirName = `${userId}-${Date.now()}`; // <-- NEW: Use userId from req.body
+    const uniqueDirName = `${userId}-${Date.now()}`; 
     const tempSubDirPath = path.join(baseTempDir, uniqueDirName);
 
-    // newSubmission object is no longer needed here, results will be returned
-    // let newSubmission; // <-- COMMENTED OUT
-
     try {
-        // newSubmission = new Submission({ // <-- COMMENTED OUT
-        //     user: userId, // <-- COMMENTED OUT
-        //     problem: problemId, // <-- COMMENTED OUT
-        //     code: code, // <-- COMMENTED OUT
-        //     language: language, // <-- COMMENTED OUT
-        //     verdict: 'Pending', // <-- COMMENTED OUT
-        //     submittedAt: new Date(), // <-- COMMENTED OUT
-        //     testResults: [], // <-- COMMENTED OUT
-        //     output: '', // <-- COMMENTED OUT
-        //     compilerOutput: '', // <-- COMMENTED OUT
-        // }); // <-- COMMENTED OUT
-        // await newSubmission.save(); // <-- COMMENTED OUT
-        // console.log(`[SubmitCode] Initial submission saved with ID: ${newSubmission._id}`); // <-- COMMENTED OUT
-
         await fs.ensureDir(tempSubDirPath);
 
         let filename;
@@ -377,12 +329,6 @@ const submitCode = asyncHandler(async (req, res) => {
                                 });
                             });
                             overallVerdict = 'Compilation Error';
-                            // newSubmission.verdict = overallVerdict; // <-- COMMENTED OUT
-                            // newSubmission.compilerOutput = finalCompilerOutput; // <-- COMMENTED OUT
-                            // newSubmission.testResults = testResults; // <-- COMMENTED OUT
-                            // newSubmission.output = `Compilation Error:\n${finalCompilerOutput}`; // <-- COMMENTED OUT
-                            // newSubmission.aiExplanation = compilationAIExplanation; // <-- COMMENTED OUT
-                            // await newSubmission.save(); // <-- COMMENTED OUT
                             return res.status(200).json({ testResults, verdict: overallVerdict, compilerOutput: finalCompilerOutput, aiExplanation: compilationAIExplanation, submissionId: submissionId }); // <-- MODIFIED: Return data, not save
                         }
                     }
@@ -408,12 +354,6 @@ const submitCode = asyncHandler(async (req, res) => {
                         });
                     });
                     overallVerdict = 'Compilation Error';
-                    // newSubmission.verdict = overallVerdict; // <-- COMMENTED OUT
-                    // newSubmission.compilerOutput = finalCompilerOutput; // <-- COMMENTED OUT
-                    // newSubmission.testResults = testResults; // <-- COMMENTED OUT
-                    // newSubmission.output = `Compilation Failed: ${err.message}`; // <-- COMMENTED OUT
-                    // newSubmission.aiExplanation = compilationAIExplanation; // <-- COMMENTED OUT
-                    // await newSubmission.save(); // <-- COMMENTED OUT
                     return res.status(200).json({ testResults, verdict: overallVerdict, compilerOutput: finalCompilerOutput, aiExplanation: compilationAIExplanation, submissionId: submissionId }); // <-- MODIFIED: Return data, not save
                 }
             }
@@ -458,7 +398,7 @@ const submitCode = asyncHandler(async (req, res) => {
                         if (overallVerdict === 'Accepted') {
                             overallVerdict = 'Wrong Answer';
                         }
-                        // Use problemTitle and problemDescription from req.body
+                       
                         const prompt = `Your code for a problem called "${problemTitle}" (Description: ${problemDescription}) failed a test case.
 
                         Problem Description: ${problemDescription}
@@ -545,10 +485,6 @@ const submitCode = asyncHandler(async (req, res) => {
                 }
             }
 
-            // newSubmission.verdict = overallVerdict; // <-- COMMENTED OUT
-            // newSubmission.testResults = testResults; // <-- COMMENTED OUT
-            // newSubmission.compilerOutput = finalCompilerOutput; // <-- COMMENTED OUT
-
             let finalOutputForSubmission = '';
             if (overallVerdict !== 'Accepted') {
                 const combinedOutput = testResults.map(tr => {
@@ -562,7 +498,6 @@ const submitCode = asyncHandler(async (req, res) => {
             } else {
                 finalOutputForSubmission = 'All test cases passed.';
             }
-            // newSubmission.output = finalOutputForSubmission; // <-- COMMENTED OUT
 
             let finalAIExplanation = '';
             if (overallVerdict === 'Wrong Answer' && !testResults.some(tr => tr.aiExplanation)) {
@@ -576,23 +511,17 @@ const submitCode = asyncHandler(async (req, res) => {
             } else if (compilationAIExplanation && overallVerdict === 'Compilation Error') {
                 finalAIExplanation = compilationAIExplanation;
             } else if (testResults.some(tr => tr.aiExplanation)) {
-                // If individual test cases have AI explanations, combine them or pick the most relevant
+        
                 finalAIExplanation = testResults.filter(tr => tr.aiExplanation).map(tr => `Test Case ${tr.testCase} explanation:\n${tr.aiExplanation}`).join('\n\n---\n\n');
             }
 
-
-            // newSubmission.aiExplanation = finalAIExplanation; // <-- COMMENTED OUT
-            // await newSubmission.save(); // <-- COMMENTED OUT
-            // console.log(`[SubmitCode] Final verdict '${overallVerdict}' saved for submission ID: ${newSubmission._id}`); // <-- COMMENTED OUT
-
-            // <-- IMPORTANT: Return the results to the main-backend
             res.status(200).json({
                 verdict: overallVerdict,
                 testResults: testResults,
                 compilerOutput: finalCompilerOutput,
                 output: finalOutputForSubmission,
                 aiExplanation: finalAIExplanation,
-                submissionId: submissionId // Pass back the original submissionId if provided
+                submissionId: submissionId 
             });
 
         } catch (overallJudgingError) {
@@ -605,31 +534,21 @@ const submitCode = asyncHandler(async (req, res) => {
             Please provide some general troubleshooting steps for an unexpected judging error.`;
             submissionOverallAIExplanation = await getAIResponse(prompt);
 
-            // No database save here, return error
-            // if (newSubmission && newSubmission._id) { // <-- COMMENTED OUT
-            //     newSubmission.verdict = 'Submission Failed'; // <-- COMMENTED OUT
-            //     newSubmission.output = `An unexpected internal error occurred during judging: ${overallJudgingError.message}`; // <-- COMMENTED OUT
-            //     newSubmission.aiExplanation = submissionOverallAIExplanation; // <-- COMMENTED OUT
-            //     await newSubmission.save(); // <-- COMMENTED OUT
-            //     console.log(`[SubmitCode] Submission ID ${newSubmission._id} updated to 'Submission Failed' due to overall judging error.`); // <-- COMMENTED OUT
-            // }
-
-            // <-- MODIFIED: Return the error to the main-backend
             res.status(500).json({
                 error: 'An unexpected error occurred during submission judging.',
                 verdict: 'Submission Failed',
                 aiExplanation: submissionOverallAIExplanation,
-                submissionId: submissionId // Pass back the original submissionId if provided
+                submissionId: submissionId 
             });
         }
 
     } catch (initialError) {
-        // This catch block handles errors even before creating newSubmission (e.g., problem not found, or initial ensureDir fails)
-        console.error(`[SubmitCode] Error before initial setup (e.g., directory creation):`, initialError.message); // <-- MODIFIED
+       
+        console.error(`[SubmitCode] Error before initial setup (e.g., directory creation):`, initialError.message); 
         res.status(500).json({
             message: 'Server error during submission setup.',
             error: initialError.message,
-            submissionId: submissionId // Pass back original submissionId if available
+            submissionId: submissionId 
         });
     } finally {
         try {

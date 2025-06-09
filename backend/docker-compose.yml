@@ -1,27 +1,26 @@
-# docker-compose.yml (located in the 'backend' folder)
 version: '3.8'
 
 services:
   main-backend:
     build: ./main-backend
     ports:
-      - "5000:5000" # Maps host port 5000 to container port 5000
+      - "5000:5000" 
     environment:
-      - COMPILER_AI_SERVICE_URL=http://compiler-ai-service:5001 # Inter-service communication
-    env_file: # This tells Docker Compose to load environment variables from this file
-      - ./main-backend/.env # This will provide MONGODB_URI, SECRET_KEY, etc.
+      - COMPILER_AI_SERVICE_URL=http://compiler-ai-service:5001 
+    env_file: 
+      - ./main-backend/.env 
     depends_on:
-      - compiler-ai-service # Ensures main-backend starts after compiler-ai-service
+      - compiler-ai-service 
     volumes:
-      - ./main-backend:/app # For development: Mounts code for live updates
-      - /app/node_modules # Prevents host node_modules from overriding container's
+      - ./main-backend:/app 
+      - /app/node_modules 
 
   compiler-ai-service:
     build: ./compiler-ai-service
     ports:
-      - "5001:5001" # Maps host port 5001 to container port 5001
-    env_file: # This tells Docker Compose to load environment variables from this file
-      - ./compiler-ai-service/.env # This will provide GEMINI_API_KEY, COMPILER_SERVICE_PORT etc.
+      - "5001:5001" 
+    env_file:
+      - ./compiler-ai-service/.env
     volumes:
-      - ./compiler-ai-service:/app # For development: Mounts code for live updates
-      - /app/node_modules # Prevents host node_modules from overriding container's
+      - ./compiler-ai-service:/app 
+      - /app/node_modules 

@@ -19,7 +19,6 @@ const LeaderboardPage = () => {
             try {
                 const res = await api.get('/users/leaderboard');
                 console.log("API Response Data:", res.data);
-                // Ensure data is always an array, though it already was from previous logs
                 setLeaderboard(Array.isArray(res.data) ? res.data : [res.data]);
                 console.log("Leaderboard state after setting:", Array.isArray(res.data) ? res.data : [res.data]);
             } catch (err) {
@@ -32,7 +31,6 @@ const LeaderboardPage = () => {
         fetchLeaderboard();
     }, [token]);
 
-    // Keep these debug logs to monitor state
     useEffect(() => {
         console.log("Current Leaderboard State:", leaderboard);
         console.log("Leaderboard length:", leaderboard.length);
@@ -108,8 +106,6 @@ const LeaderboardPage = () => {
                 </header>
 
                 <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                    {/* NEW LOGIC HERE: Always render the table structure IF NOT LOADING/ERROR */}
-                    {/* Then, inside the table's container, check if leaderboard is empty */}
                     {leaderboard.length === 0 ? (
                         <div className="text-center py-12">
                             <div className="text-6xl mb-4">📊</div>

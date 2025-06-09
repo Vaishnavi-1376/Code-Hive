@@ -1,7 +1,5 @@
-// frontend/src/pages/ProblemDetailPage.jsx
-
 import React, { useEffect, useState } from 'react';
-import API from '../utils/api'; // This is the API utility that likely adds '/api/'
+import API from '../utils/api'; 
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Editor from 'react-simple-code-editor';
@@ -13,7 +11,7 @@ import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-java';
 import 'prismjs/components/prism-c';
 import 'prismjs/components/prism-cpp';
-import { getAIResponse } from '../utils/ai'; // <--- RESTORED THIS LINE!
+import { getAIResponse } from '../utils/ai'; 
 
 const ProblemDetailPage = () => {
     const { id } = useParams();
@@ -79,11 +77,11 @@ const ProblemDetailPage = () => {
     useEffect(() => {
         const fetchProblem = async () => {
             try {
-                const res = await API.get(`/problems/${id}`); // CORRECTED LINE
+                const res = await API.get(`/problems/${id}`); 
                 setProblem(res.data);
                 setCode(initialCodeSnippets[language]);
             } catch (err) {
-                console.error(`Error fetching problem with ID ${id}:`, err.response?.data || err); // CORRECTED LINE
+                console.error(`Error fetching problem with ID ${id}:`, err.response?.data || err); 
                 setProblemError(err.response?.data?.message || 'Failed to fetch problem details.');
             } finally {
                 setProblemLoading(false);
@@ -103,13 +101,13 @@ const ProblemDetailPage = () => {
             setDeleteMessage('');
             setDeleteError('');
             try {
-                await API.delete(`/problems/${id}`); // CORRECTED LINE
+                await API.delete(`/problems/${id}`); 
                 setDeleteMessage('Problem deleted successfully!');
                 setTimeout(() => {
                     navigate('/dashboard');
                 }, 1500);
             } catch (err) {
-                console.error('Error deleting problem:', err.response?.data || err); // CORRECTED LINE
+                console.error('Error deleting problem:', err.response?.data || err); 
                 setDeleteError(err.response?.data?.message || 'Failed to delete problem. You might not have permission.');
             }
         }
@@ -119,7 +117,7 @@ const ProblemDetailPage = () => {
         setCompiling(true);
         setOutput('');
         setCompilerError('');
-        setSubmissionResults(null); // Clear previous submission results for 'Run Code'
+        setSubmissionResults(null); 
         setSubmissionError('');
         setOverallVerdict('');
         setAiRunCodeExplanation('');
@@ -131,9 +129,7 @@ const ProblemDetailPage = () => {
         }
 
         try {
-            // This API call goes to your compiler-ai-service, likely proxied through main-backend
-            // Ensure your main-backend's proxy or direct call points to the compiler-ai-service
-            const res = await API.post('/run', { // This endpoint is likely in your main-backend that forwards to compiler-ai-service
+            const res = await API.post('/run', { 
                 code,
                 language,
                 input: userInput,
@@ -154,8 +150,8 @@ const ProblemDetailPage = () => {
         setSubmitting(true);
         setSubmissionResults(null);
         setSubmissionError('');
-        setOutput(''); // Clear run code output as we are submitting
-        setCompilerError(''); // Clear run code errors
+        setOutput('');
+        setCompilerError(''); 
         setOverallVerdict('');
         setAiRunCodeExplanation('');
 
@@ -169,56 +165,45 @@ const ProblemDetailPage = () => {
             setSubmitting(false);
             return;
         }
-        // User ID is handled by the backend's protect middleware (req.user._id)
-        // No need to send user.id from frontend
 
         try {
-            // STEP 1: Send code to the compiler-ai-service for evaluation against test cases
-            // Assuming your compiler-ai-service has an endpoint like '/submit-tests'
-            // or '/evaluate' that takes code, language, and test cases.
-            // THIS IS A CRITICAL ASSUMPTION. Verify your compiler-ai-service's endpoint.
-            const evaluationRes = await API.post('/submit', { // This endpoint is likely in your main-backend that forwards to compiler-ai-service
+            const evaluationRes = await API.post('/submit', { 
                 code,
                 language,
-                problemId: problem._id, // Send problem ID for compiler service to get test cases
-                testCases: problem.testCases, // <-- Ensure problem.testCases is available here
+                problemId: problem._id, 
+                testCases: problem.testCases, 
                 problemTitle: problem.title,
                 problemDescription: problem.description,
-                timeLimit: problem.timeLimit // Pass if your problem model includes it
+                timeLimit: problem.timeLimit 
             });
 
             const { verdict, testResults, output: compilerOutput, compilerOutput: actualCompilerOutput, aiExplanation } = evaluationRes.data;
 
             setSubmissionResults(testResults);
             setOverallVerdict(verdict || 'Unknown Verdict');
-            setAiRunCodeExplanation(aiExplanation || ''); // Display AI explanation if provided by compiler service
+            setAiRunCodeExplanation(aiExplanation || ''); 
 
-            // STEP 2: Record the submission in your main-backend database
-            // This API call goes to your main-backend's new route: /api/problems/:id/submit
             try {
-                await API.post(`/problems/${problem._id}/submit`, { // CORRECTED LINE
+                await API.post(`/problems/${problem._id}/submit`, { 
                     code,
                     language,
-                    verdict, // Use the verdict obtained from the compiler-ai-service
-                    output: compilerOutput, // Standard output from running code
-                    compilerOutput: actualCompilerOutput, // Errors/warnings from compilation itself
-                    testResults, // Detailed test case results
-                    // You might also want to send runtime and memory usage if your compiler-ai-service provides them
-                    // runtime: evaluationRes.data.runtime,
-                    // memory: evaluationRes.data.memory,
+                    verdict, 
+                    output: compilerOutput, 
+                    compilerOutput: actualCompilerOutput, 
+                    testResults, 
                 });
                 console.log('Submission successfully recorded in main-backend!');
             } catch (recordErr) {
                 console.error('Error recording submission in main-backend:', recordErr.response?.data || recordErr);
                 setSubmissionError(prev => prev + '\nFailed to record submission in database.');
-                // You might still show the compiler results even if database save fails
+               
             }
 
         } catch (err) {
             console.error('Error during code evaluation/submission:', err.response?.data || err);
             const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to submit code. Please check your code or try again.';
             setSubmissionError(errorMessage);
-            setOverallVerdict(err.response?.data?.verdict || 'Submission Failed'); // Display compiler verdict on error too
+            setOverallVerdict(err.response?.data?.verdict || 'Submission Failed'); 
             if (err.response?.data.aiExplanation) {
                 setAiRunCodeExplanation(err.response?.data.aiExplanation);
             }
@@ -238,16 +223,12 @@ const ProblemDetailPage = () => {
         }
 
         try {
-            // This API call goes to your main-backend, which then forwards to your compiler-ai-service
-            const res = await API.post(`/problems/${id}/hint`, { // CORRECTED LINE
+            const res = await API.post(`/problems/${id}/hint`, { 
                 problemDescription: problem.description,
                 problemTitle: problem.title,
                 userCode: code,
-                language: language // <--- ADDED THIS LINE
+                language: language 
             });
-            // The main-backend's /hint endpoint should return { hint: "..." } or similar
-            // based on how your compiler-ai-service's /hint endpoint is structured.
-            // Adjust res.data.hint if the structure is different (e.g., res.data.aiExplanation).
             setAiHint(res.data.hint || res.data.aiExplanation || 'No hint available.');
         } catch (err) {
             console.error('Error getting AI hint:', err.response?.data || err.message);
@@ -327,7 +308,7 @@ const ProblemDetailPage = () => {
                     {canEditOrDelete && (
                         <div className="flex space-x-4 mb-6">
                             <Link
-                                to={`/edit-problem/${problem._id}`} // CORRECTED LINE
+                                to={`/edit-problem/${problem._id}`} 
                                 className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-md transition duration-300"
                             >
                                 Edit Problem

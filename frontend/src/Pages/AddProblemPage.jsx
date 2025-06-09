@@ -26,7 +26,7 @@ const AddProblemPage = () => {
                 setError('You are not authorized to add problems. Redirecting to dashboard...');
                 setTimeout(() => navigate('/dashboard'), 2000);
             }
-            setPageLoading(false); // <-- Only runs after !authLoading
+            setPageLoading(false); 
         }
     }, [user, authLoading, navigate]);
 
