@@ -8,7 +8,8 @@
 
 The CodeHive project is organized into a modular structure, separating the frontend, main backend, and AI/compiler services for clarity and scalability.
 
-## Code-Hive/
+&lt;pre>
+Code-Hive/
 ├── backend/
 │   ├── compiler-ai-service/
 │   │   ├── Dockerfile
@@ -51,7 +52,7 @@ The CodeHive project is organized into a modular structure, separating the front
 │   └── .env (runtime)
 │
 └── README.md
-
+&lt;/pre>
 
 ---
 
