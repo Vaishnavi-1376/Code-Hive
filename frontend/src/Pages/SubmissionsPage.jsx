@@ -1,4 +1,3 @@
-// src/pages/SubmissionsPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import API from '../utils/api';
@@ -17,9 +16,11 @@ const SubmissionsPage = () => {
         const fetchSubmissions = async () => {
             setLoading(true);
             setError(null);
+            // Ensure user and user.id are available and authentication is not still loading
             if (user && user.id && !authLoading) {
                 console.log("Fetching submissions for user ID:", user.id);
                 try {
+                    // Correctly use template literals for the API endpoint
                     const res = await API.get(`/users/${user.id}/submissions`, {
                         params: { page: currentPage, limit }
                     });
@@ -27,12 +28,14 @@ const SubmissionsPage = () => {
                     setTotalPages(res.data.totalPages);
                 } catch (err) {
                     console.error('Error fetching submissions:', err.response?.data || err);
-                    setError(err.response?.data?.message || 'Failed to load submissions.');
-                    setSubmissions([]);
+                    // Provide a more user-friendly error message
+                    setError(err.response?.data?.message || 'Failed to load submissions. Please try again.');
+                    setSubmissions([]); // Clear submissions on error
                 } finally {
                     setLoading(false);
                 }
             } else if (!authLoading) {
+                // If auth is done loading but user data isn't ready, set appropriate state
                 console.warn("User object or user.id not available for submissions fetch:", user);
                 setLoading(false);
                 setError("User data not fully available. Please log in again.");
@@ -40,6 +43,7 @@ const SubmissionsPage = () => {
         };
 
         fetchSubmissions();
+        // Depend on user, authLoading, and currentPage to re-fetch when they change
     }, [user, authLoading, currentPage]);
 
     const handlePreviousPage = () => {
@@ -54,17 +58,7 @@ const SubmissionsPage = () => {
         }
     };
 
-    const getVerdictClass = (verdict) => {
-        switch (verdict) {
-            case 'Accepted': return 'bg-green-200 text-green-600';
-            case 'Wrong Answer': return 'bg-red-200 text-red-600';
-            case 'Time Limit Exceeded': return 'bg-yellow-200 text-yellow-600';
-            case 'Runtime Error': return 'bg-red-200 text-red-600';
-            case 'Compilation Error': return 'bg-orange-200 text-orange-600';
-            default: return 'bg-gray-200 text-gray-600';
-        }
-    };
-
+    // Display loading state for both authentication and data fetching
     if (authLoading || loading) {
         return (
             <div className="flex justify-center items-center min-h-screen bg-gray-100">
@@ -73,6 +67,7 @@ const SubmissionsPage = () => {
         );
     }
 
+    // Display error message and provide login link
     if (error) {
         return (
             <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 text-red-600">
@@ -82,13 +77,14 @@ const SubmissionsPage = () => {
         );
     }
 
+    // Handle cases where user is not logged in or ID is missing after loading
     if (!user || !user.id) {
-        return (
-            <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 text-red-600">
-                <p>User not logged in or ID not available.</p>
-                <Link to="/login" className="text-blue-500 hover:underline mt-4">Go to Login</Link>
-            </div>
-        );
+           return (
+             <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 text-red-600">
+                 <p>User not logged in or ID not available.</p>
+                 <Link to="/login" className="text-blue-500 hover:underline mt-4">Go to Login</Link>
+             </div>
+         );
     }
 
     return (
@@ -105,35 +101,28 @@ const SubmissionsPage = () => {
                                 <th className="py-3 px-6 text-left">Verdict</th>
                                 <th className="py-3 px-6 text-left">Language</th>
                                 <th className="py-3 px-6 text-left">Submitted At</th>
-                                {/* Add a header for Action/Details if desired */}
                             </tr>
                         </thead>
                         <tbody className="text-gray-600 text-sm font-light">
                             {submissions.map(submission => (
-                                // *** MAKE THE ENTIRE ROW CLICKABLE TO THE SUBMISSION DETAIL PAGE ***
-                                <tr
-                                    key={submission._id}
-                                    className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer"
-                                    onClick={() => window.location.href = `/submissions/${submission._id}`} // Or use useNavigate from react-router-dom
-                                >
+                                <tr key={submission._id} className="border-b border-gray-200 hover:bg-gray-100">
                                     <td className="py-3 px-6 text-left whitespace-nowrap">
-                                        <Link to={`/problems/${submission.problem._id}`} className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                        {/* Correctly use template literals for the Link 'to' prop */}
+                                        <Link to={`/problems/${submission.problem._id}`} className="text-blue-600 hover:underline">
                                             {submission.problem.title}
                                         </Link>
                                     </td>
                                     <td className="py-3 px-6 text-left">
-                                        <span className={`py-1 px-3 rounded-full text-xs font-semibold ${getVerdictClass(submission.verdict)}`}>
+                                        {/* Dynamic styling based on verdict */}
+                                        <span className={`py-1 px-3 rounded-full text-xs font-semibold
+                                            ${submission.verdict === 'Accepted' ? 'bg-green-200 text-green-600' :
+                                            submission.verdict === 'Wrong Answer' ? 'bg-red-200 text-red-600' :
+                                            'bg-gray-200 text-gray-600'}`}>
                                             {submission.verdict}
                                         </span>
                                     </td>
                                     <td className="py-3 px-6 text-left">{submission.language}</td>
                                     <td className="py-3 px-6 text-left">{new Date(submission.submittedAt).toLocaleString()}</td>
-                                    {/* Optional: Add a column for a dedicated "View Details" button within the row */}
-                                    {/* <td className="py-3 px-6 text-center">
-                                        <Link to={`/submissions/${submission._id}`} className="text-purple-600 hover:text-purple-800">
-                                            View
-                                        </Link>
-                                    </td> */}
                                 </tr>
                             ))}
                         </tbody>
