@@ -1,3 +1,4 @@
+// src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/nav';
@@ -13,8 +14,9 @@ import AddProblemPage from './Pages/AddProblemPage';
 import ProblemsListPage from './Pages/ProblemListPage';
 import ProblemDetailPage from './Pages/ProblemDetailPage';
 import EditProblemPage from './Pages/EditProblemPage';
-import SubmissionsPage from './Pages/SubmissionsPage'; 
-import LeaderboardPage from './Pages/LeaderboardPage'; 
+import SubmissionsPage from './Pages/SubmissionsPage';
+import LeaderboardPage from './Pages/LeaderboardPage';
+import SubmissionDetailPage from './Pages/SubmissionDetailPage'; // <<< IMPORT THIS NEW COMPONENT
 import './App.css';
 
 function App() {
@@ -24,31 +26,32 @@ function App() {
         <Navbar />
         <div className="main-content">
           <Routes>
-        
+
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/verify/:token" element={<VerifyEmail />} />
             <Route path="/problems" element={<ProblemsListPage />} />
             <Route path="/problems/:id" element={<ProblemDetailPage />} />
-           
+
             <Route path="/leaderboard" element={<LeaderboardPage />} />
 
-           
+
             <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/compiler" element={<ProtectedRoute><CompilerPage /></ProtectedRoute>} />
             <Route path="/add-problem" element={<ProtectedRoute><AddProblemPage /></ProtectedRoute>} />
             <Route path="/edit-problem/:id" element={<ProtectedRoute><EditProblemPage /></ProtectedRoute>} />
-           
-            <Route path="/submissions" element={<ProtectedRoute><SubmissionsPage /></ProtectedRoute>} /> 
-           
+
+            <Route path="/submissions" element={<ProtectedRoute><SubmissionsPage /></ProtectedRoute>} />
+            {/* <<< ADD THIS NEW ROUTE FOR INDIVIDUAL SUBMISSION DETAILS */}
+            <Route path="/submissions/:id" element={<ProtectedRoute><SubmissionDetailPage /></ProtectedRoute>} />
+
           </Routes>
         </div>
       </AuthProvider>
     </Router>
   );
 }
-
 
 export default App;
