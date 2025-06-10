@@ -44,7 +44,7 @@ const ProblemsListPage = () => {
     useEffect(() => {
         const fetchAllProblems = async () => {
             try {
-                const res = await API.get('/problems'); // Fetch ALL problems without any query params
+                const res = await API.get('/problems');
                 setAllProblems(res.data);
                 setFilteredProblems(res.data); // Initially, filtered problems are all problems
                 setLoading(false);
@@ -73,7 +73,6 @@ const ProblemsListPage = () => {
         if (selectedTags.length > 0) {
             currentFiltered = currentFiltered.filter(problem => {
                 // Check if the problem has AT LEAST ONE of the selected tags
-                // If you want problems to have ALL selected tags, change `.some` to `.every`
                 if (!problem.tags) return false; // Ensure problem.tags exists
                 return selectedTags.some(selectedTag =>
                     problem.tags.map(tag => tag.toLowerCase()).includes(selectedTag.toLowerCase())
@@ -81,16 +80,12 @@ const ProblemsListPage = () => {
             });
         }
 
-        // 3. Apply Search Term (debounced for better performance)
-        // Note: The debounce logic itself usually wraps the useEffect or state updates.
-        // For simplicity here, the filtering logic is directly in the effect.
-        // A better approach for search might be a separate useEffect with a debounce.
+        // 3. Apply Search Term
         if (searchTerm) {
             const lowerCaseSearchTerm = searchTerm.toLowerCase();
             currentFiltered = currentFiltered.filter(problem =>
                 problem.title.toLowerCase().includes(lowerCaseSearchTerm) ||
                 (problem.description && problem.description.toLowerCase().includes(lowerCaseSearchTerm))
-                // You can add more fields to search, e.g., problem.author
             );
         }
 
@@ -139,9 +134,9 @@ const ProblemsListPage = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 relative overflow-hidden py-16 px-4 sm:px-6 lg:px-8">
-            <div className="absolute top-1/4 left-[10%] w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob"></div>
-            <div className="absolute top-[60%] right-[15%] w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-2000"></div>
-            <div className="absolute bottom-1/4 left-[35%] w-56 h-56 bg-pink-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-4000"></div>
+             <div className="absolute top-1/4 left-[10%] w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob"></div>
+             <div className="absolute top-[60%] right-[15%] w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-2000"></div>
+             <div className="absolute bottom-1/4 left-[35%] w-56 h-56 bg-pink-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-4000"></div>
 
             <div className="relative z-10 max-w-4xl mx-auto">
                 <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-12 text-center leading-tight tracking-tighter drop-shadow-sm">
@@ -150,7 +145,7 @@ const ProblemsListPage = () => {
                     </span>
                 </h1>
 
-                {/* --- New Filter and Search UI Section --- */}
+                {/* --- Filter and Search UI Section --- */}
                 <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-6 mb-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         {/* Difficulty Filter */}
@@ -187,12 +182,12 @@ const ProblemsListPage = () => {
                         </div>
                     </div>
 
-                    {/* Tags Filter */}
+                    {/* Tags Filter - WITH IMPROVED LAYOUT */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-3"> {/* Increased margin-bottom */}
                             Select Tags:
                         </label>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-x-4 gap-y-2"> {/* Increased horizontal gap, added vertical gap */}
                             {availableTags.map(tag => (
                                 <div key={tag} className="flex items-center">
                                     <input
@@ -201,9 +196,9 @@ const ProblemsListPage = () => {
                                         value={tag}
                                         checked={selectedTags.includes(tag)}
                                         onChange={handleTagChange}
-                                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded cursor-pointer"
                                     />
-                                    <label htmlFor={`tag-${tag}`} className="ml-2 text-sm text-gray-900 cursor-pointer">
+                                    <label htmlFor={`tag-${tag}`} className="ml-2 text-sm text-gray-900 cursor-pointer select-none"> {/* Added cursor-pointer and select-none */}
                                         {tag}
                                     </label>
                                 </div>
