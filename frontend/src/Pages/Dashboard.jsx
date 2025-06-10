@@ -1,3 +1,4 @@
+// src/pages/Dashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -12,14 +13,15 @@ const DashboardPage = () => {
     });
     const [statsLoading, setStatsLoading] = useState(true);
     const [statsError, setStatsError] = useState(null);
+
     useEffect(() => {
         const fetchUserStats = async () => {
             setStatsLoading(true);
             setStatsError(null);
             if (user && user.id && !authLoading) {
                 try {
-                    console.log("Fetching user stats for ID:", user.id); 
-                    const res = await API.get(`/users/${user.id}/stats`); 
+                    console.log("Fetching user stats for ID:", user.id);
+                    const res = await API.get(`/users/${user.id}/stats`);
                     setUserStats(res.data);
                 } catch (err) {
                     console.error('Error fetching user stats:', err.response?.data || err);
@@ -40,7 +42,7 @@ const DashboardPage = () => {
         };
 
         fetchUserStats();
-    }, [user, authLoading]); 
+    }, [user, authLoading]);
 
     if (authLoading || statsLoading) {
         return (
@@ -87,11 +89,13 @@ const DashboardPage = () => {
                 <h3 className="text-lg font-semibold text-gray-700 mb-4">Latest Submission</h3>
                 {submission ? (
                     <>
+                        {/* Ensure submission.problemTitle and submission.verdict exist */}
                         <p className="text-gray-700 text-md font-medium mb-2">{submission.problemTitle}</p>
                         <p className={`text-xl font-bold mb-4 ${submission.verdict === 'Accepted' ? 'text-green-600' : 'text-red-600'}`}>
                             {submission.verdict}
                         </p>
-                        <Link to="/submissions" className="text-pink-600 hover:text-pink-800 font-medium flex items-center text-sm mt-auto">
+                        {/* *** CHANGE THIS LINK TO THE SPECIFIC SUBMISSION DETAIL PAGE *** */}
+                        <Link to={`/submissions/${submission._id}`} className="text-pink-600 hover:text-pink-800 font-medium flex items-center text-sm mt-auto">
                             View Details
                             <svg className="ml-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                         </Link>
@@ -128,7 +132,7 @@ const DashboardPage = () => {
                             title="Problems Solved"
                             value={userStats.problemsSolved}
                             linkText="View All Submissions"
-                            linkTo="/submissions"
+                            linkTo="/submissions" // This remains the same, leading to the list of all submissions
                             valueColorClass="text-purple-600"
                             icon="✅"
                         />
