@@ -149,6 +149,7 @@ const ProblemsListPage = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 relative overflow-hidden py-16 px-4 sm:px-6 lg:px-8">
+             {/* Background blobs for visual effect */}
              <div className="absolute top-1/4 left-[10%] w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob"></div>
              <div className="absolute top-[60%] right-[15%] w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-2000"></div>
              <div className="absolute bottom-1/4 left-[35%] w-56 h-56 bg-pink-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-4000"></div>
@@ -161,7 +162,8 @@ const ProblemsListPage = () => {
                 </h1>
 
                 {/* --- Filter and Search UI Section - Each filter in its own card --- */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"> {/* Main grid container */}
+                {/* This main grid container just handles the layout and gap between the individual filter cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     {/* Difficulty Filter Card */}
                     <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-6">
                         <label htmlFor="difficulty-filter" className="block text-sm font-medium text-gray-700 mb-2">
@@ -241,7 +243,7 @@ const ProblemsListPage = () => {
                                             checked={selectedTags.includes(tag)}
                                             onChange={handleTagChange}
                                             className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                                            onClick={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()} // Prevent closing dropdown when checkbox is clicked
                                         />
                                         <label htmlFor={`tag-${tag}`} className="ml-3 block truncate text-gray-900 cursor-pointer">
                                             {tag}
