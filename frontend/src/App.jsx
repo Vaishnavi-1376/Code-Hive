@@ -16,7 +16,6 @@ import ProblemDetailPage from './Pages/ProblemDetailPage';
 import EditProblemPage from './Pages/EditProblemPage';
 import SubmissionsPage from './Pages/SubmissionsPage';
 import LeaderboardPage from './Pages/LeaderboardPage';
-import SubmissionDetailPage from './Pages/SubmissionDetailPage'; // <<< IMPORT THIS NEW COMPONENT
 import './App.css';
 
 function App() {
@@ -44,8 +43,7 @@ function App() {
             <Route path="/edit-problem/:id" element={<ProtectedRoute><EditProblemPage /></ProtectedRoute>} />
 
             <Route path="/submissions" element={<ProtectedRoute><SubmissionsPage /></ProtectedRoute>} />
-            {/* <<< ADD THIS NEW ROUTE FOR INDIVIDUAL SUBMISSION DETAILS */}
-            <Route path="/submissions/:id" element={<ProtectedRoute><SubmissionDetailPage /></ProtectedRoute>} />
+      
 
           </Routes>
         </div>
