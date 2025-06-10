@@ -263,28 +263,19 @@ const getUserStats = async (req, res) => {
         }
         // 3. Last Submission
 
-        // You are already selecting 'problem' and '_id' indirectly by not explicitly excluding them,
-        // and .lean() will give you a plain JavaScript object.
-        // We just need to ensure '_id' is included in the final formatted object.
         const lastSubmission = await Submission.findOne({ user: userId })
             .sort({ submittedAt: -1 })
-            .populate('problem', 'title') // This ensures problem.title is available
-            .select('verdict submittedAt problem _id language code compilationOutput') // Explicitly select _id, language, code, compilationOutput
-            .lean(); // .lean() is good for performance for read operations
-
+            .populate('problem', 'title')
+            .select('verdict submittedAt problem')
+            .lean();
         let formattedLastSubmission = null;
         if (lastSubmission) {
             formattedLastSubmission = {
-                _id: lastSubmission._id, // <<< ADD THIS LINE
                 problemTitle: lastSubmission.problem ? lastSubmission.problem.title : 'Unknown Problem',
                 verdict: lastSubmission.verdict,
                 submittedAt: lastSubmission.submittedAt,
-                language: lastSubmission.language, // Also include these for the detail page
-                code: lastSubmission.code,
-                compilationOutput: lastSubmission.compilationOutput
             };
         }
-
         res.json({
             problemsSolved: problemsSolvedCount,
             rank: rank,
