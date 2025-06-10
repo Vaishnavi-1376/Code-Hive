@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react'; // Import useRef
 import API from '../utils/api'; // Import your configured API utility
 import { Link } from 'react-router-dom';
 
@@ -40,8 +40,9 @@ const ProblemsListPage = () => {
     const [selectedTags, setSelectedTags] = useState([]); // State for selected tags (e.g., ['Arrays', 'Math'])
     const [searchTerm, setSearchTerm] = useState(''); // State for search input
 
-    // NEW STATE for controlling tag filter visibility
-    const [showTagsFilter, setShowTagsFilter] = useState(false); // Initially collapsed
+    // NEW STATE for controlling tag dropdown visibility
+    const [isTagsDropdownOpen, setIsTagsDropdownOpen] = useState(false); // Initially closed
+    const tagsDropdownRef = useRef(null); // Ref for detecting clicks outside the dropdown
 
 
     // Effect to fetch ALL problems once when the component mounts
@@ -112,6 +113,25 @@ const ProblemsListPage = () => {
         setSelectedTags(selectedTags.filter(tag => tag !== tagToRemove));
     };
 
+    // Effect to handle clicks outside the tags dropdown to close it
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (tagsDropdownRef.current && !tagsDropdownRef.current.contains(event.target)) {
+                setIsTagsDropdownOpen(false);
+            }
+        };
+
+        // Add event listener when dropdown is open
+        if (isTagsDropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        // Clean up event listener when component unmounts or dropdown closes
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isTagsDropdownOpen]); // Re-run effect when dropdown state changes
+
 
     // --- Common Tags for your platform (you might need to adjust these based on your actual problem data) ---
     const availableTags = [
@@ -156,10 +176,9 @@ const ProblemsListPage = () => {
                     </span>
                 </h1>
 
-                {/* --- Filter and Search UI Section - MODIFIED FOR SIDE-BY-SIDE LAYOUT --- */}
+                {/* --- Filter and Search UI Section - MODIFIED FOR MULTI-SELECT DROPDOWN TAGS --- */}
                 <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-6 mb-8">
-                    {/* The main grid container now holds all three filter components */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6"> {/* Removed mb-6 here as it's not needed with items directly inside */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Difficulty Filter */}
                         <div>
                             <label htmlFor="difficulty-filter" className="block text-sm font-medium text-gray-700 mb-2">
@@ -178,7 +197,7 @@ const ProblemsListPage = () => {
                             </select>
                         </div>
 
-                        {/* Search Bar - Removed md:col-span-2 */}
+                        {/* Search Bar */}
                         <div>
                             <label htmlFor="search-input" className="block text-sm font-medium text-gray-700 mb-2">
                                 Search Problems:
@@ -193,42 +212,68 @@ const ProblemsListPage = () => {
                             />
                         </div>
 
-                        {/* Tags Filter - NOW INSIDE THE GRID */}
-                        <div>
-                            <div
-                                className="flex justify-between items-center cursor-pointer mb-3"
-                                onClick={() => setShowTagsFilter(!showTagsFilter)}
+                        {/* Tags Filter - NOW AS A MULTI-SELECT DROPDOWN */}
+                        <div className="relative" ref={tagsDropdownRef}> {/* Attach ref here */}
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Select Tags:
+                            </label>
+                            <button
+                                type="button"
+                                className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 sm:text-sm"
+                                onClick={() => setIsTagsDropdownOpen(!isTagsDropdownOpen)}
                             >
-                                <label className="block text-sm font-medium text-gray-700 cursor-pointer">
-                                    Select Tags:
-                                </label>
-                                <svg
-                                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${showTagsFilter ? 'rotate-180' : ''}`}
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            </div>
+                                <span className="block truncate">
+                                    {selectedTags.length > 0
+                                        ? selectedTags.join(', ')
+                                        : 'All Tags'}
+                                </span>
+                                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                    <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fillRule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.25 9.5a.75.75 0 011.1 1.02L10 15.148l2.7-2.908a.75.75 0 011.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.55-.24z" clipRule="evenodd" />
+                                    </svg>
+                                </span>
+                            </button>
 
-                            {/* Conditionally render the tags content */}
-                            {showTagsFilter && (
-                                <div className="flex flex-wrap gap-x-4 gap-y-2 transition-all duration-300 ease-in-out">
+                            {/* Tags Dropdown Menu */}
+                            {isTagsDropdownOpen && (
+                                <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
                                     {availableTags.map(tag => (
-                                        <div key={tag} className="flex items-center">
+                                        <div
+                                            key={tag}
+                                            className="relative cursor-default select-none py-2 pl-3 pr-9 text-gray-900 hover:bg-purple-50 hover:text-purple-900"
+                                            // Make the whole div clickable for better UX
+                                            onClick={() => {
+                                                // Simulate checkbox toggle
+                                                const isChecked = selectedTags.includes(tag);
+                                                if (isChecked) {
+                                                    setSelectedTags(selectedTags.filter(t => t !== tag));
+                                                } else {
+                                                    setSelectedTags([...selectedTags, tag]);
+                                                }
+                                            }}
+                                        >
                                             <input
                                                 id={`tag-${tag}`}
+                                                name={`tag-${tag}`}
                                                 type="checkbox"
                                                 value={tag}
                                                 checked={selectedTags.includes(tag)}
-                                                onChange={handleTagChange}
-                                                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded cursor-pointer"
+                                                onChange={handleTagChange} // Still use the handler to keep state in sync
+                                                className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                                                // Prevent event bubbling from inner checkbox to parent div's onClick
+                                                onClick={(e) => e.stopPropagation()}
                                             />
-                                            <label htmlFor={`tag-${tag}`} className="ml-2 text-sm text-gray-900 cursor-pointer select-none">
+                                            <label htmlFor={`tag-${tag}`} className="ml-3 block truncate text-gray-900 cursor-pointer">
                                                 {tag}
                                             </label>
+                                            {/* Checkmark for selected items */}
+                                            {selectedTags.includes(tag) && (
+                                                <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-purple-600">
+                                                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                        <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.877 3.878 7.424-9.704a.75.75 0 011.052-.143z" clipRule="evenodd" />
+                                                    </svg>
+                                                </span>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -239,7 +284,7 @@ const ProblemsListPage = () => {
                 {/* --- End Filter and Search UI Section --- */}
 
                 {/* --- Active Filters Display Section --- */}
-                {selectedTags.length > 0 && (
+                {selectedTags.length > 0 && ( // Only show this section if there are selected tags
                     <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-4 mb-8 flex flex-wrap items-center gap-3">
                         <span className="text-sm font-medium text-gray-700 mr-2">Active Filters:</span>
                         {selectedTags.map(tag => (
