@@ -67,6 +67,7 @@ const DashboardPage = () => {
 
     const isAdmin = user && typeof user.userType === 'string' && user.userType.toLowerCase() === 'admin';
 
+    // Modified StatCard to conditionally render link or just text
     const StatCard = ({ title, value, linkText, linkTo, valueColorClass, icon }) => (
         <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col justify-between items-start">
             <div className="flex items-center justify-between w-full mb-4">
@@ -74,11 +75,13 @@ const DashboardPage = () => {
                 {icon && <span className="text-purple-500 text-2xl">{icon}</span>}
             </div>
             <p className={`${valueColorClass} text-4xl font-bold mb-4`}>{value}</p>
-            {linkTo && (
+            {linkTo ? ( // Only render Link if linkTo is provided
                 <Link to={linkTo} className="text-purple-600 hover:text-purple-800 font-medium flex items-center text-sm mt-auto">
                     {linkText}
                     <svg className="ml-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                 </Link>
+            ) : (
+                <span className="text-gray-500 text-sm mt-auto"></span> // Empty span or simply omit if no text needed
             )}
         </div>
     );
@@ -94,8 +97,8 @@ const DashboardPage = () => {
                         <p className={`text-xl font-bold mb-4 ${submission.verdict === 'Accepted' ? 'text-green-600' : 'text-red-600'}`}>
                             {submission.verdict}
                         </p>
-                        {/* *** CHANGE THIS LINK TO THE SPECIFIC SUBMISSION DETAIL PAGE *** */}
-                        <Link to={`/submissions/${submission._id}`} className="text-pink-600 hover:text-pink-800 font-medium flex items-center text-sm mt-auto">
+                        {/* CHANGE THIS LINK TO THE GENERAL SUBMISSIONS LIST */}
+                        <Link to={`/submissions`} className="text-pink-600 hover:text-pink-800 font-medium flex items-center text-sm mt-auto">
                             View Details
                             <svg className="ml-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                         </Link>
@@ -128,11 +131,12 @@ const DashboardPage = () => {
 
                 <section className="mb-20">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* Modified "Problems Solved" StatCard: removed linkTo and linkText */}
                         <StatCard
                             title="Problems Solved"
                             value={userStats.problemsSolved}
-                            linkText="View All Submissions"
-                            linkTo="/submissions" // This remains the same, leading to the list of all submissions
+                            // linkText="View All Submissions" // Removed
+                            // linkTo="/submissions"         // Removed
                             valueColorClass="text-purple-600"
                             icon="✅"
                         />
