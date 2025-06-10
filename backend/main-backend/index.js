@@ -47,7 +47,7 @@ app.get('/', (req, res) => {
 });
 
 
-// API Routes
+// API routes
 app.use('/api/users', userRoutes);
 app.use('/api/problems', problemRoutes);
 app.post('/api/submit', protect, async (req, res, next) => {
