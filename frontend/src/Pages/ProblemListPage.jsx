@@ -29,15 +29,24 @@ const getDifficultyBadge = (difficulty) => {
 };
 
 const ProblemsListPage = () => {
-    const [problems, setProblems] = useState([]);
+    // Original state for fetching problems
+    const [allProblems, setAllProblems] = useState([]); // Stores all problems fetched initially
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // New state for filtering and searching
+    const [filteredProblems, setFilteredProblems] = useState([]); // Problems currently displayed
+    const [difficultyFilter, setDifficultyFilter] = useState(''); // State for difficulty dropdown
+    const [selectedTags, setSelectedTags] = useState([]); // State for selected tags (e.g., ['Arrays', 'Math'])
+    const [searchTerm, setSearchTerm] = useState(''); // State for search input
+
+    // Effect to fetch ALL problems once when the component mounts
     useEffect(() => {
-        const fetchProblems = async () => {
+        const fetchAllProblems = async () => {
             try {
-                const res = await API.get('/problems'); 
-                setProblems(res.data);
+                const res = await API.get('/problems'); // Fetch ALL problems without any query params
+                setAllProblems(res.data);
+                setFilteredProblems(res.data); // Initially, filtered problems are all problems
                 setLoading(false);
             } catch (err) {
                 console.error('Error fetching problems:', err.response?.data || err);
@@ -46,8 +55,67 @@ const ProblemsListPage = () => {
             }
         };
 
-        fetchProblems();
-    }, []);
+        fetchAllProblems();
+    }, []); // Empty dependency array means this runs only once
+
+    // Effect to apply filters whenever filter states or allProblems change
+    useEffect(() => {
+        let currentFiltered = [...allProblems]; // Start with all problems
+
+        // 1. Apply Difficulty Filter
+        if (difficultyFilter) {
+            currentFiltered = currentFiltered.filter(problem =>
+                problem.difficulty.toLowerCase() === difficultyFilter.toLowerCase()
+            );
+        }
+
+        // 2. Apply Tags Filter
+        if (selectedTags.length > 0) {
+            currentFiltered = currentFiltered.filter(problem => {
+                // Check if the problem has AT LEAST ONE of the selected tags
+                // If you want problems to have ALL selected tags, change `.some` to `.every`
+                if (!problem.tags) return false; // Ensure problem.tags exists
+                return selectedTags.some(selectedTag =>
+                    problem.tags.map(tag => tag.toLowerCase()).includes(selectedTag.toLowerCase())
+                );
+            });
+        }
+
+        // 3. Apply Search Term (debounced for better performance)
+        // Note: The debounce logic itself usually wraps the useEffect or state updates.
+        // For simplicity here, the filtering logic is directly in the effect.
+        // A better approach for search might be a separate useEffect with a debounce.
+        if (searchTerm) {
+            const lowerCaseSearchTerm = searchTerm.toLowerCase();
+            currentFiltered = currentFiltered.filter(problem =>
+                problem.title.toLowerCase().includes(lowerCaseSearchTerm) ||
+                (problem.description && problem.description.toLowerCase().includes(lowerCaseSearchTerm))
+                // You can add more fields to search, e.g., problem.author
+            );
+        }
+
+        setFilteredProblems(currentFiltered);
+
+    }, [difficultyFilter, selectedTags, searchTerm, allProblems]); // Re-run when these states change
+
+    // Handler for tag checkboxes
+    const handleTagChange = (e) => {
+        const tag = e.target.value;
+        if (e.target.checked) {
+            setSelectedTags([...selectedTags, tag]);
+        } else {
+            setSelectedTags(selectedTags.filter(t => t !== tag));
+        }
+    };
+
+    // --- Common Tags for your platform (you might need to adjust these based on your actual problem data) ---
+    const availableTags = [
+        'Arrays', 'Strings', 'Math', 'Dynamic Programming', 'Trees',
+        'Graphs', 'Greedy', 'Binary Search', 'Sorting', 'Hashing',
+        'Linked List', 'Two Pointers', 'Stack', 'Queue', 'Recursion',
+        'Backtracking', 'Bit Manipulation'
+    ];
+
 
     if (loading) {
         return (
@@ -71,34 +139,99 @@ const ProblemsListPage = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 relative overflow-hidden py-16 px-4 sm:px-6 lg:px-8">
-             <div className="absolute top-1/4 left-[10%] w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob"></div>
-             <div className="absolute top-[60%] right-[15%] w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-2000"></div>
-             <div className="absolute bottom-1/4 left-[35%] w-56 h-56 bg-pink-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-4000"></div>
+            <div className="absolute top-1/4 left-[10%] w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob"></div>
+            <div className="absolute top-[60%] right-[15%] w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-2000"></div>
+            <div className="absolute bottom-1/4 left-[35%] w-56 h-56 bg-pink-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-4000"></div>
 
-            <div className="relative z-10 max-w-4xl mx-auto"> 
+            <div className="relative z-10 max-w-4xl mx-auto">
                 <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-12 text-center leading-tight tracking-tighter drop-shadow-sm">
                     <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-700 via-indigo-700 to-blue-700">
                         Explore Challenges
                     </span>
                 </h1>
 
+                {/* --- New Filter and Search UI Section --- */}
+                <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-6 mb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        {/* Difficulty Filter */}
+                        <div>
+                            <label htmlFor="difficulty-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                                Filter by Difficulty:
+                            </label>
+                            <select
+                                id="difficulty-filter"
+                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md shadow-sm"
+                                value={difficultyFilter}
+                                onChange={(e) => setDifficultyFilter(e.target.value)}
+                            >
+                                <option value="">All Difficulties</option>
+                                <option value="easy">Easy</option>
+                                <option value="medium">Medium</option>
+                                <option value="hard">Hard</option>
+                            </select>
+                        </div>
+
+                        {/* Search Bar */}
+                        <div className="md:col-span-2">
+                            <label htmlFor="search-input" className="block text-sm font-medium text-gray-700 mb-2">
+                                Search Problems:
+                            </label>
+                            <input
+                                type="text"
+                                id="search-input"
+                                className="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md shadow-sm"
+                                placeholder="Search by title or description..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Tags Filter */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Select Tags:
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {availableTags.map(tag => (
+                                <div key={tag} className="flex items-center">
+                                    <input
+                                        id={`tag-${tag}`}
+                                        type="checkbox"
+                                        value={tag}
+                                        checked={selectedTags.includes(tag)}
+                                        onChange={handleTagChange}
+                                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                                    />
+                                    <label htmlFor={`tag-${tag}`} className="ml-2 text-sm text-gray-900 cursor-pointer">
+                                        {tag}
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+                {/* --- End Filter and Search UI Section --- */}
+
+
                 <div className="bg-white rounded-xl shadow-lg border border-purple-100 divide-y divide-gray-200 overflow-hidden">
-                    {problems.length > 0 ? (
-                        problems.map((problem, index) => (
+                    {/* Render filtered problems */}
+                    {filteredProblems.length > 0 ? (
+                        filteredProblems.map((problem, index) => (
                             <Link
                                 key={problem._id}
                                 to={`/problems/${problem._id}`}
                                 className="block p-4 sm:p-6 flex items-center justify-between transition-colors duration-200 hover:bg-gray-50"
                             >
-                                <div className="flex flex-col flex-grow mr-4"> 
+                                <div className="flex flex-col flex-grow mr-4">
                                     <h2 className="text-lg font-semibold text-gray-800 hover:text-purple-700 transition-colors duration-200 leading-snug">
                                         {problem.title}
                                     </h2>
-                                    <div className="flex flex-wrap gap-2 mt-2"> 
+                                    <div className="flex flex-wrap gap-2 mt-2">
                                         {problem.tags && problem.tags.length > 0 && problem.tags.map((tag, tagIndex) => (
                                             <span
                                                 key={tagIndex}
-                                                className="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full shadow-sm" // Slightly smaller tag padding
+                                                className="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full shadow-sm"
                                             >
                                                 {tag}
                                             </span>
@@ -106,14 +239,14 @@ const ProblemsListPage = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex-shrink-0"> 
+                                <div className="flex-shrink-0">
                                     {getDifficultyBadge(problem.difficulty)}
                                 </div>
                             </Link>
                         ))
                     ) : (
                         <p className="p-6 text-center text-gray-500 text-xl py-10">
-                            No challenges currently available.
+                            No challenges found matching your criteria.
                         </p>
                     )}
                 </div>
