@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'; // Import useRef
+import React, { useEffect, useState, useRef } from 'react';
 import API from '../utils/api'; // Import your configured API utility
 import { Link } from 'react-router-dom';
 
@@ -29,29 +29,25 @@ const getDifficultyBadge = (difficulty) => {
 };
 
 const ProblemsListPage = () => {
-    // Original state for fetching problems
-    const [allProblems, setAllProblems] = useState([]); // Stores all problems fetched initially
+    const [allProblems, setAllProblems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // New state for filtering and searching
-    const [filteredProblems, setFilteredProblems] = useState([]); // Problems currently displayed
-    const [difficultyFilter, setDifficultyFilter] = useState(''); // State for difficulty dropdown
-    const [selectedTags, setSelectedTags] = useState([]); // State for selected tags (e.g., ['Arrays', 'Math'])
-    const [searchTerm, setSearchTerm] = useState(''); // State for search input
+    const [filteredProblems, setFilteredProblems] = useState([]);
+    const [difficultyFilter, setDifficultyFilter] = useState('');
+    const [selectedTags, setSelectedTags] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
 
-    // NEW STATE for controlling tag dropdown visibility
-    const [isTagsDropdownOpen, setIsTagsDropdownOpen] = useState(false); // Initially closed
-    const tagsDropdownRef = useRef(null); // Ref for detecting clicks outside the dropdown
+    const [isTagsDropdownOpen, setIsTagsDropdownOpen] = useState(false);
+    const tagsDropdownRef = useRef(null);
 
 
-    // Effect to fetch ALL problems once when the component mounts
     useEffect(() => {
         const fetchAllProblems = async () => {
             try {
                 const res = await API.get('/problems');
                 setAllProblems(res.data);
-                setFilteredProblems(res.data); // Initially, filtered problems are all problems
+                setFilteredProblems(res.data);
                 setLoading(false);
             } catch (err) {
                 console.error('Error fetching problems:', err.response?.data || err);
@@ -61,31 +57,26 @@ const ProblemsListPage = () => {
         };
 
         fetchAllProblems();
-    }, []); // Empty dependency array means this runs only once
+    }, []);
 
-    // Effect to apply filters whenever filter states or allProblems change
     useEffect(() => {
-        let currentFiltered = [...allProblems]; // Start with all problems
+        let currentFiltered = [...allProblems];
 
-        // 1. Apply Difficulty Filter
         if (difficultyFilter) {
             currentFiltered = currentFiltered.filter(problem =>
                 problem.difficulty.toLowerCase() === difficultyFilter.toLowerCase()
             );
         }
 
-        // 2. Apply Tags Filter
         if (selectedTags.length > 0) {
             currentFiltered = currentFiltered.filter(problem => {
-                // Check if the problem has AT LEAST ONE of the selected tags
-                if (!problem.tags) return false; // Ensure problem.tags exists
+                if (!problem.tags) return false;
                 return selectedTags.some(selectedTag =>
                     problem.tags.map(tag => tag.toLowerCase()).includes(selectedTag.toLowerCase())
                 );
             });
         }
 
-        // 3. Apply Search Term
         if (searchTerm) {
             const lowerCaseSearchTerm = searchTerm.toLowerCase();
             currentFiltered = currentFiltered.filter(problem =>
@@ -96,9 +87,8 @@ const ProblemsListPage = () => {
 
         setFilteredProblems(currentFiltered);
 
-    }, [difficultyFilter, selectedTags, searchTerm, allProblems]); // Re-run when these states change
+    }, [difficultyFilter, selectedTags, searchTerm, allProblems]);
 
-    // Handler for tag checkboxes
     const handleTagChange = (e) => {
         const tag = e.target.value;
         if (e.target.checked) {
@@ -108,12 +98,10 @@ const ProblemsListPage = () => {
         }
     };
 
-    // Handler to remove a tag from the active filters (e.g., by clicking its badge)
     const handleRemoveTag = (tagToRemove) => {
         setSelectedTags(selectedTags.filter(tag => tag !== tagToRemove));
     };
 
-    // Effect to handle clicks outside the tags dropdown to close it
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (tagsDropdownRef.current && !tagsDropdownRef.current.contains(event.target)) {
@@ -121,19 +109,16 @@ const ProblemsListPage = () => {
             }
         };
 
-        // Add event listener when dropdown is open
         if (isTagsDropdownOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         }
 
-        // Clean up event listener when component unmounts or dropdown closes
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isTagsDropdownOpen]); // Re-run effect when dropdown state changes
+    }, [isTagsDropdownOpen]);
 
 
-    // --- Common Tags for your platform (you might need to adjust these based on your actual problem data) ---
     const availableTags = [
         'Arrays', 'Strings', 'Math', 'Dynamic Programming', 'Trees',
         'Graphs', 'Greedy', 'Binary Search', 'Sorting', 'Hashing',
@@ -164,7 +149,6 @@ const ProblemsListPage = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 relative overflow-hidden py-16 px-4 sm:px-6 lg:px-8">
-             {/* Background blobs for visual effect */}
              <div className="absolute top-1/4 left-[10%] w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob"></div>
              <div className="absolute top-[60%] right-[15%] w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-2000"></div>
              <div className="absolute bottom-1/4 left-[35%] w-56 h-56 bg-pink-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-4000"></div>
@@ -176,115 +160,109 @@ const ProblemsListPage = () => {
                     </span>
                 </h1>
 
-                {/* --- Filter and Search UI Section - MODIFIED FOR MULTI-SELECT DROPDOWN TAGS --- */}
-                <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-6 mb-8">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Difficulty Filter */}
-                        <div>
-                            <label htmlFor="difficulty-filter" className="block text-sm font-medium text-gray-700 mb-2">
-                                Filter by Difficulty:
-                            </label>
-                            <select
-                                id="difficulty-filter"
-                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md shadow-sm"
-                                value={difficultyFilter}
-                                onChange={(e) => setDifficultyFilter(e.target.value)}
-                            >
-                                <option value="">All Difficulties</option>
-                                <option value="easy">Easy</option>
-                                <option value="medium">Medium</option>
-                                <option value="hard">Hard</option>
-                            </select>
-                        </div>
+                {/* --- Filter and Search UI Section - Each filter in its own card --- */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"> {/* Main grid container */}
+                    {/* Difficulty Filter Card */}
+                    <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-6">
+                        <label htmlFor="difficulty-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                            Filter by Difficulty:
+                        </label>
+                        <select
+                            id="difficulty-filter"
+                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md shadow-sm"
+                            value={difficultyFilter}
+                            onChange={(e) => setDifficultyFilter(e.target.value)}
+                        >
+                            <option value="">All Difficulties</option>
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
 
-                        {/* Search Bar */}
-                        <div>
-                            <label htmlFor="search-input" className="block text-sm font-medium text-gray-700 mb-2">
-                                Search Problems:
-                            </label>
-                            <input
-                                type="text"
-                                id="search-input"
-                                className="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md shadow-sm"
-                                placeholder="Search by title or description..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+                    {/* Search Bar Card */}
+                    <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-6">
+                        <label htmlFor="search-input" className="block text-sm font-medium text-gray-700 mb-2">
+                            Search Problems:
+                        </label>
+                        <input
+                            type="text"
+                            id="search-input"
+                            className="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md shadow-sm"
+                            placeholder="Search by title or description..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
 
-                        {/* Tags Filter - NOW AS A MULTI-SELECT DROPDOWN */}
-                        <div className="relative" ref={tagsDropdownRef}> {/* Attach ref here */}
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Select Tags:
-                            </label>
-                            <button
-                                type="button"
-                                className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 sm:text-sm"
-                                onClick={() => setIsTagsDropdownOpen(!isTagsDropdownOpen)}
-                            >
-                                <span className="block truncate">
-                                    {selectedTags.length > 0
-                                        ? selectedTags.join(', ')
-                                        : 'All Tags'}
-                                </span>
-                                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                                    <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                        <path fillRule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.25 9.5a.75.75 0 011.1 1.02L10 15.148l2.7-2.908a.75.75 0 011.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.55-.24z" clipRule="evenodd" />
-                                    </svg>
-                                </span>
-                            </button>
+                    {/* Tags Filter Card - Multi-select Dropdown */}
+                    <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-6 relative" ref={tagsDropdownRef}>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Select Tags:
+                        </label>
+                        <button
+                            type="button"
+                            className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 sm:text-sm"
+                            onClick={() => setIsTagsDropdownOpen(!isTagsDropdownOpen)}
+                        >
+                            <span className="block truncate">
+                                {selectedTags.length > 0
+                                    ? selectedTags.join(', ')
+                                    : 'All Tags'}
+                            </span>
+                            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fillRule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.25 9.5a.75.75 0 011.1 1.02L10 15.148l2.7-2.908a.75.75 0 011.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.55-.24z" clipRule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
 
-                            {/* Tags Dropdown Menu */}
-                            {isTagsDropdownOpen && (
-                                <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-                                    {availableTags.map(tag => (
-                                        <div
-                                            key={tag}
-                                            className="relative cursor-default select-none py-2 pl-3 pr-9 text-gray-900 hover:bg-purple-50 hover:text-purple-900"
-                                            // Make the whole div clickable for better UX
-                                            onClick={() => {
-                                                // Simulate checkbox toggle
-                                                const isChecked = selectedTags.includes(tag);
-                                                if (isChecked) {
-                                                    setSelectedTags(selectedTags.filter(t => t !== tag));
-                                                } else {
-                                                    setSelectedTags([...selectedTags, tag]);
-                                                }
-                                            }}
-                                        >
-                                            <input
-                                                id={`tag-${tag}`}
-                                                name={`tag-${tag}`}
-                                                type="checkbox"
-                                                value={tag}
-                                                checked={selectedTags.includes(tag)}
-                                                onChange={handleTagChange} // Still use the handler to keep state in sync
-                                                className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                                                // Prevent event bubbling from inner checkbox to parent div's onClick
-                                                onClick={(e) => e.stopPropagation()}
-                                            />
-                                            <label htmlFor={`tag-${tag}`} className="ml-3 block truncate text-gray-900 cursor-pointer">
-                                                {tag}
-                                            </label>
-                                            {/* Checkmark for selected items */}
-                                            {selectedTags.includes(tag) && (
-                                                <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-purple-600">
-                                                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                                        <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.877 3.878 7.424-9.704a.75.75 0 011.052-.143z" clipRule="evenodd" />
-                                                    </svg>
-                                                </span>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        {/* Tags Dropdown Menu */}
+                        {isTagsDropdownOpen && (
+                            <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                                {availableTags.map(tag => (
+                                    <div
+                                        key={tag}
+                                        className="relative cursor-default select-none py-2 pl-3 pr-9 text-gray-900 hover:bg-purple-50 hover:text-purple-900"
+                                        onClick={() => {
+                                            const isChecked = selectedTags.includes(tag);
+                                            if (isChecked) {
+                                                setSelectedTags(selectedTags.filter(t => t !== tag));
+                                            } else {
+                                                setSelectedTags([...selectedTags, tag]);
+                                            }
+                                        }}
+                                    >
+                                        <input
+                                            id={`tag-${tag}`}
+                                            name={`tag-${tag}`}
+                                            type="checkbox"
+                                            value={tag}
+                                            checked={selectedTags.includes(tag)}
+                                            onChange={handleTagChange}
+                                            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                        <label htmlFor={`tag-${tag}`} className="ml-3 block truncate text-gray-900 cursor-pointer">
+                                            {tag}
+                                        </label>
+                                        {selectedTags.includes(tag) && (
+                                            <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-purple-600">
+                                                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                    <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.877 3.878 7.424-9.704a.75.75 0 011.052-.143z" clipRule="evenodd" />
+                                                </svg>
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
                 {/* --- End Filter and Search UI Section --- */}
 
                 {/* --- Active Filters Display Section --- */}
-                {selectedTags.length > 0 && ( // Only show this section if there are selected tags
+                {selectedTags.length > 0 && (
                     <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-4 mb-8 flex flex-wrap items-center gap-3">
                         <span className="text-sm font-medium text-gray-700 mr-2">Active Filters:</span>
                         {selectedTags.map(tag => (
