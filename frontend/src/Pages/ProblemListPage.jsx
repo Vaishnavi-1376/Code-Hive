@@ -156,9 +156,10 @@ const ProblemsListPage = () => {
                     </span>
                 </h1>
 
-                {/* --- Filter and Search UI Section --- */}
+                {/* --- Filter and Search UI Section - MODIFIED FOR SIDE-BY-SIDE LAYOUT --- */}
                 <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-6 mb-8">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    {/* The main grid container now holds all three filter components */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6"> {/* Removed mb-6 here as it's not needed with items directly inside */}
                         {/* Difficulty Filter */}
                         <div>
                             <label htmlFor="difficulty-filter" className="block text-sm font-medium text-gray-700 mb-2">
@@ -177,8 +178,8 @@ const ProblemsListPage = () => {
                             </select>
                         </div>
 
-                        {/* Search Bar */}
-                        <div className="md:col-span-2">
+                        {/* Search Bar - Removed md:col-span-2 */}
+                        <div>
                             <label htmlFor="search-input" className="block text-sm font-medium text-gray-700 mb-2">
                                 Search Problems:
                             </label>
@@ -191,54 +192,54 @@ const ProblemsListPage = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                    </div>
 
-                    {/* Tags Filter - NOW COLLAPSIBLE */}
-                    <div>
-                        <div
-                            className="flex justify-between items-center cursor-pointer mb-3" // Make the whole div clickable
-                            onClick={() => setShowTagsFilter(!showTagsFilter)}
-                        >
-                            <label className="block text-sm font-medium text-gray-700 cursor-pointer">
-                                Select Tags:
-                            </label>
-                            <svg
-                                className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${showTagsFilter ? 'rotate-180' : ''}`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg"
+                        {/* Tags Filter - NOW INSIDE THE GRID */}
+                        <div>
+                            <div
+                                className="flex justify-between items-center cursor-pointer mb-3"
+                                onClick={() => setShowTagsFilter(!showTagsFilter)}
                             >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                        </div>
-
-                        {/* Conditionally render the tags content */}
-                        {showTagsFilter && (
-                            <div className="flex flex-wrap gap-x-4 gap-y-2 transition-all duration-300 ease-in-out">
-                                {availableTags.map(tag => (
-                                    <div key={tag} className="flex items-center">
-                                        <input
-                                            id={`tag-${tag}`}
-                                            type="checkbox"
-                                            value={tag}
-                                            checked={selectedTags.includes(tag)}
-                                            onChange={handleTagChange}
-                                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded cursor-pointer"
-                                        />
-                                        <label htmlFor={`tag-${tag}`} className="ml-2 text-sm text-gray-900 cursor-pointer select-none">
-                                            {tag}
-                                        </label>
-                                    </div>
-                                ))}
+                                <label className="block text-sm font-medium text-gray-700 cursor-pointer">
+                                    Select Tags:
+                                </label>
+                                <svg
+                                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${showTagsFilter ? 'rotate-180' : ''}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
                             </div>
-                        )}
+
+                            {/* Conditionally render the tags content */}
+                            {showTagsFilter && (
+                                <div className="flex flex-wrap gap-x-4 gap-y-2 transition-all duration-300 ease-in-out">
+                                    {availableTags.map(tag => (
+                                        <div key={tag} className="flex items-center">
+                                            <input
+                                                id={`tag-${tag}`}
+                                                type="checkbox"
+                                                value={tag}
+                                                checked={selectedTags.includes(tag)}
+                                                onChange={handleTagChange}
+                                                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded cursor-pointer"
+                                            />
+                                            <label htmlFor={`tag-${tag}`} className="ml-2 text-sm text-gray-900 cursor-pointer select-none">
+                                                {tag}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
                 {/* --- End Filter and Search UI Section --- */}
 
                 {/* --- Active Filters Display Section --- */}
-                {selectedTags.length > 0 && ( // Only show this section if there are selected tags
+                {selectedTags.length > 0 && (
                     <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-4 mb-8 flex flex-wrap items-center gap-3">
                         <span className="text-sm font-medium text-gray-700 mr-2">Active Filters:</span>
                         {selectedTags.map(tag => (
