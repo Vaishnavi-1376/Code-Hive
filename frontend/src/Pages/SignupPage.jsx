@@ -1,10 +1,11 @@
+// src/pages/SignupPage.jsx
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useState } from 'react';
 import API from '../utils/api';
 import { useNavigate, Link } from 'react-router-dom';
-import Loader from '../components/Loader';
+// import Loader from '../components/Loader'; // Loader is not used directly here, but kept if you plan to use it
 
 const schema = yup.object().shape({
     fullName: yup.string().min(3, 'Min 3 characters').required('Full name is required'),
@@ -22,20 +23,31 @@ export default function Signup() {
         register,
         handleSubmit,
         formState: { errors },
+        reset // Add reset to clear form after success
     } = useForm({ resolver: yupResolver(schema) });
 
     const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState(''); // NEW STATE FOR SUCCESS MESSAGE
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+
     const onSubmit = async (data) => {
         setError('');
+        setSuccessMessage(''); // Clear any previous success message
         setLoading(true);
         try {
             const { confirmPassword, ...rest } = data;
-            await API.post('/users/signup', rest);
-            navigate('/login');
+            const res = await API.post('/users/signup', rest); // Capture the response
+
+            // Set the success message from the backend response
+            setSuccessMessage(res.data.message || 'Signup successful! Please check your email for verification.');
+            reset(); // Optionally reset the form fields after successful signup
+
+            // DO NOT navigate here. We want the message to be seen.
+            // navigate('/login'); // <--- REMOVE OR COMMENT OUT THIS LINE
         } catch (err) {
-                setError(err.response?.data?.message || 'Signup failed');
+            setError(err.response?.data?.message || 'Signup failed. Please try again.');
+            setSuccessMessage(''); // Ensure success message is cleared on error
         } finally {
             setLoading(false);
         }
@@ -43,12 +55,20 @@ export default function Signup() {
 
     return (
         <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-4">
-            <div className="max-w-2xl mx-auto mt-24 p-10 bg-white rounded shadow-md"> 
+            <div className="max-w-2xl mx-auto mt-24 p-10 bg-white rounded shadow-md">
                 <h1 className="text-3xl font-semibold mb-6 text-center text-gray-800">Sign Up</h1>
                 <form onSubmit={handleSubmit(onSubmit)} noValidate>
+                    {/* Display error messages */}
                     {error && (
                         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
                             <span className="block sm:inline">{error}</span>
+                        </div>
+                    )}
+
+                    {/* Display success message */}
+                    {successMessage && (
+                        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+                            <span className="block sm:inline">{successMessage}</span>
                         </div>
                     )}
 
@@ -105,7 +125,7 @@ export default function Signup() {
                         placeholder="Confirm password"
                     />
                     {errors.confirmPassword && <p className="text-red-500 mb-2">{errors.confirmPassword.message}</p>}
-                    {error && <p className="text-red-500 mb-2 text-center">{error}</p>}
+                    {/* The general error display is already present, no need for the extra `error` p tag */}
 
                     <button
                         type="submit"
