@@ -40,6 +40,10 @@ const ProblemsListPage = () => {
     const [selectedTags, setSelectedTags] = useState([]); // State for selected tags (e.g., ['Arrays', 'Math'])
     const [searchTerm, setSearchTerm] = useState(''); // State for search input
 
+    // NEW STATE for controlling tag filter visibility
+    const [showTagsFilter, setShowTagsFilter] = useState(false); // Initially collapsed
+
+
     // Effect to fetch ALL problems once when the component mounts
     useEffect(() => {
         const fetchAllProblems = async () => {
@@ -103,6 +107,12 @@ const ProblemsListPage = () => {
         }
     };
 
+    // Handler to remove a tag from the active filters (e.g., by clicking its badge)
+    const handleRemoveTag = (tagToRemove) => {
+        setSelectedTags(selectedTags.filter(tag => tag !== tagToRemove));
+    };
+
+
     // --- Common Tags for your platform (you might need to adjust these based on your actual problem data) ---
     const availableTags = [
         'Arrays', 'Strings', 'Math', 'Dynamic Programming', 'Trees',
@@ -134,6 +144,7 @@ const ProblemsListPage = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 relative overflow-hidden py-16 px-4 sm:px-6 lg:px-8">
+             {/* Background blobs for visual effect */}
              <div className="absolute top-1/4 left-[10%] w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob"></div>
              <div className="absolute top-[60%] right-[15%] w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-2000"></div>
              <div className="absolute bottom-1/4 left-[35%] w-56 h-56 bg-pink-100 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-slow-blob animation-delay-4000"></div>
@@ -182,31 +193,81 @@ const ProblemsListPage = () => {
                         </div>
                     </div>
 
-                    {/* Tags Filter - WITH IMPROVED LAYOUT */}
+                    {/* Tags Filter - NOW COLLAPSIBLE */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-3"> {/* Increased margin-bottom */}
-                            Select Tags:
-                        </label>
-                        <div className="flex flex-wrap gap-x-4 gap-y-2"> {/* Increased horizontal gap, added vertical gap */}
-                            {availableTags.map(tag => (
-                                <div key={tag} className="flex items-center">
-                                    <input
-                                        id={`tag-${tag}`}
-                                        type="checkbox"
-                                        value={tag}
-                                        checked={selectedTags.includes(tag)}
-                                        onChange={handleTagChange}
-                                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded cursor-pointer"
-                                    />
-                                    <label htmlFor={`tag-${tag}`} className="ml-2 text-sm text-gray-900 cursor-pointer select-none"> {/* Added cursor-pointer and select-none */}
-                                        {tag}
-                                    </label>
-                                </div>
-                            ))}
+                        <div
+                            className="flex justify-between items-center cursor-pointer mb-3" // Make the whole div clickable
+                            onClick={() => setShowTagsFilter(!showTagsFilter)}
+                        >
+                            <label className="block text-sm font-medium text-gray-700 cursor-pointer">
+                                Select Tags:
+                            </label>
+                            <svg
+                                className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${showTagsFilter ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
                         </div>
+
+                        {/* Conditionally render the tags content */}
+                        {showTagsFilter && (
+                            <div className="flex flex-wrap gap-x-4 gap-y-2 transition-all duration-300 ease-in-out">
+                                {availableTags.map(tag => (
+                                    <div key={tag} className="flex items-center">
+                                        <input
+                                            id={`tag-${tag}`}
+                                            type="checkbox"
+                                            value={tag}
+                                            checked={selectedTags.includes(tag)}
+                                            onChange={handleTagChange}
+                                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded cursor-pointer"
+                                        />
+                                        <label htmlFor={`tag-${tag}`} className="ml-2 text-sm text-gray-900 cursor-pointer select-none">
+                                            {tag}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
                 {/* --- End Filter and Search UI Section --- */}
+
+                {/* --- Active Filters Display Section --- */}
+                {selectedTags.length > 0 && ( // Only show this section if there are selected tags
+                    <div className="bg-white rounded-xl shadow-lg border border-purple-100 p-4 mb-8 flex flex-wrap items-center gap-3">
+                        <span className="text-sm font-medium text-gray-700 mr-2">Active Filters:</span>
+                        {selectedTags.map(tag => (
+                            <span
+                                key={`active-tag-${tag}`}
+                                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 shadow-sm cursor-pointer transition-colors duration-200 hover:bg-purple-200"
+                                onClick={() => handleRemoveTag(tag)}
+                            >
+                                {tag}
+                                <button
+                                    type="button"
+                                    className="ml-2 -mr-0.5 h-4 w-4 inline-flex items-center justify-center rounded-full text-purple-500 hover:text-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                                >
+                                    <span className="sr-only">Remove {tag} filter</span>
+                                    <svg className="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M1 1l6 6m0-6L1 7" />
+                                    </svg>
+                                </button>
+                            </span>
+                        ))}
+                        <button
+                            onClick={() => setSelectedTags([])}
+                            className="ml-auto text-sm font-medium text-purple-600 hover:text-purple-800 transition-colors duration-200"
+                        >
+                            Clear All Filters
+                        </button>
+                    </div>
+                )}
+                {/* --- END: Active Filters Display Section --- */}
 
 
                 <div className="bg-white rounded-xl shadow-lg border border-purple-100 divide-y divide-gray-200 overflow-hidden">
